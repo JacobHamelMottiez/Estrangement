@@ -1,0 +1,84 @@
+---
+title: A Sample Title - The SocioEconomic Aspects of Stock Assessments
+subtitle: with non-English diacritics in the author names. See documentation.
+author:
+  - name: Jane Doe
+    affiliations:
+      - name: Minnesota Department of Natural Resources
+        address: 500 Lafayette Road Saint Paul, MN 55155
+      - name: University of Minnesota
+        department: Department of Mathematics
+  - name: Eva Nováková
+    affiliations:
+      - name: Czech University of Life Sciences
+        address: Družstevní 666, Vikýřovice, Czechia
+  - name: Matti Meikäläinen
+    email: matti@jy.fi
+    affiliations:
+      - name: University of Kemijärvi
+        department: Department of Biological and Environmental Science
+        address: Kylmäniementie 79, 98120, KEMIJÄRVI, Finland
+  - name: Ashok Kumar
+    affiliations:
+      - name: University of Minnesota
+        department: Department of Mathematics
+      - name: HØnefoss Institute
+        address: R Tradição 35, Portugal 2950-726
+---
+---
+title: "Light/Dark Mode Example"
+format: html
+execute: 
+  python: 
+    options:
+      - include: true
+---
+
+```{python}
+import dash
+import dash_bootstrap_components as dbc
+import dash_html_components as html
+from dash import dcc
+from dash.dependencies import Input, Output
+import dash_dangerously_set_inner_html
+
+# Create a Dash app
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+app.layout = html.Div([
+    html.H1("Dynamic Light/Dark Mode Toggle"),
+    html.Div(id="page-content"),
+    html.Br(),
+    
+    # Color mode switch (the toggle button)
+    html.Span(
+        [
+            dbc.Label(className="fa fa-moon", html_for="switch"),
+            dbc.Switch(id="switch", value=True, className="d-inline-block ms-1", persistence=True),
+            dbc.Label(className="fa fa-sun", html_for="switch"),
+        ]
+    ),
+    
+    # This div will hold the content with dynamic theme
+    html.Div(id="theme-content")
+])
+
+# Callback to update the theme based on switch
+@app.callback(
+    Output("theme-content", "children"),
+    Input("switch", "value")
+)
+def update_content(dark_mode):
+    if dark_mode:
+        return html.Div([
+            html.H3("Dark mode activated", style={"color": "white"}),
+            html.P("This content is now displayed in dark mode.", style={"color": "white", "background-color": "#333"})
+        ])
+    else:
+        return html.Div([
+            html.H3("Light mode activated", style={"color": "black"}),
+            html.P("This content is now displayed in light mode.", style={"color": "black", "background-color": "#fff"})
+        ])
+
+if __name__ == "__main__":
+    app.run_server(debug=True, use_reloader=False)
