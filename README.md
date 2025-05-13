@@ -15,4 +15,4 @@ Note that on my local repository, there is a folder named `Data`. For propretary
 However, it is noteworthy to mention that OpenAlex is becoming a very appealing data base for the kind of analysis I conducted here. You can adapt my code to make it work with OpenAlex,
 just be sure to adapt the column names according to OpenAlex typology since it is not the same as Scopus (e.g. respectively title vs sourcetitle).
 
-![](Visualisation/map_philo_bio_update.png)
+![](Visualisation/CHP3/map_philo_bio_update.png)
