@@ -1,0 +1,1892 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.29">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Jacob Hamel-Mottiez">
+<meta name="dcterms.date" content="2025-04-28">
+<meta name="keywords" content="openalex, R, Philosophy of Biology">
+
+<title>openalexR</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="openalexR_files/libs/clipboard/clipboard.min.js"></script>
+<script src="openalexR_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="openalexR_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="openalexR_files/libs/quarto-html/popper.min.js"></script>
+<script src="openalexR_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="openalexR_files/libs/quarto-html/anchor.min.js"></script>
+<link href="openalexR_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="openalexR_files/libs/quarto-html/quarto-syntax-highlighting-0815c480559380816a4d1ea211a47e91.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="openalexR_files/libs/quarto-html/quarto-syntax-highlighting-dark-748b535e376f14d4692bf2b2e5fd6380.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="openalexR_files/libs/quarto-html/quarto-syntax-highlighting-0815c480559380816a4d1ea211a47e91.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="openalexR_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="openalexR_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="openalexR_files/libs/bootstrap/bootstrap-1a8aaa4fc676277e44ec3808e619c0ac.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="openalexR_files/libs/bootstrap/bootstrap-dark-1a1665bedd78a2e6983fd881a274d6ed.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="openalexR_files/libs/bootstrap/bootstrap-1a8aaa4fc676277e44ec3808e619c0ac.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="openalexR_files/libs/htmltools-fill-0.5.8.1/fill.css" rel="stylesheet">
+
+<script src="openalexR_files/libs/htmlwidgets-1.6.4/htmlwidgets.js"></script>
+
+<script src="openalexR_files/libs/plotly-binding-4.10.4/plotly.js"></script>
+
+<script src="openalexR_files/libs/typedarray-0.1/typedarray.min.js"></script>
+
+<script src="openalexR_files/libs/jquery-3.5.1/jquery.min.js"></script>
+
+<link href="openalexR_files/libs/crosstalk-1.2.1/css/crosstalk.min.css" rel="stylesheet">
+
+<script src="openalexR_files/libs/crosstalk-1.2.1/js/crosstalk.min.js"></script>
+
+<link href="openalexR_files/libs/plotly-htmlwidgets-css-2.11.1/plotly-htmlwidgets.css" rel="stylesheet">
+
+<script src="openalexR_files/libs/plotly-main-2.11.1/plotly-latest.min.js"></script>
+
+
+
+</head>
+
+<body class="quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#crossref-no-caption" id="toc-crossref-no-caption" class="nav-link active" data-scroll-target="#crossref-no-caption">crossref, no caption</a></li>
+  <li><a href="#caption-no-crossref" id="toc-caption-no-crossref" class="nav-link" data-scroll-target="#caption-no-crossref">caption, no crossref</a></li>
+  <li><a href="#setup" id="toc-setup" class="nav-link" data-scroll-target="#setup">Setup</a></li>
+  <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
+  <li><a href="#ggplot2" id="toc-ggplot2" class="nav-link" data-scroll-target="#ggplot2">ggplot2</a>
+  <ul class="collapse">
+  <li><a href="#ratio-of-missing-abstract-over-all-documents" id="toc-ratio-of-missing-abstract-over-all-documents" class="nav-link" data-scroll-target="#ratio-of-missing-abstract-over-all-documents">Ratio of missing abstract over all documents</a></li>
+  </ul></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">openalexR</h1>
+</div>
+
+
+<div class="quarto-title-meta-author">
+  <div class="quarto-title-meta-heading">Author</div>
+  <div class="quarto-title-meta-heading">Affiliation</div>
+  
+    <div class="quarto-title-meta-contents">
+    <p class="author">Jacob Hamel-Mottiez <a href="mailto:jacob.hamel-mottiez.1@ulaval.ca" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> <a href="https://orcid.org/0009-0007-3666-908X" class="quarto-title-author-orcid"> <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo1N0NEMjA4MDI1MjA2ODExOTk0QzkzNTEzRjZEQTg1NyIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDozM0NDOEJGNEZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDozM0NDOEJGM0ZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M1IE1hY2ludG9zaCI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkZDN0YxMTc0MDcyMDY4MTE5NUZFRDc5MUM2MUUwNEREIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjU3Q0QyMDgwMjUyMDY4MTE5OTRDOTM1MTNGNkRBODU3Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+84NovQAAAR1JREFUeNpiZEADy85ZJgCpeCB2QJM6AMQLo4yOL0AWZETSqACk1gOxAQN+cAGIA4EGPQBxmJA0nwdpjjQ8xqArmczw5tMHXAaALDgP1QMxAGqzAAPxQACqh4ER6uf5MBlkm0X4EGayMfMw/Pr7Bd2gRBZogMFBrv01hisv5jLsv9nLAPIOMnjy8RDDyYctyAbFM2EJbRQw+aAWw/LzVgx7b+cwCHKqMhjJFCBLOzAR6+lXX84xnHjYyqAo5IUizkRCwIENQQckGSDGY4TVgAPEaraQr2a4/24bSuoExcJCfAEJihXkWDj3ZAKy9EJGaEo8T0QSxkjSwORsCAuDQCD+QILmD1A9kECEZgxDaEZhICIzGcIyEyOl2RkgwAAhkmC+eAm0TAAAAABJRU5ErkJggg=="></a></p>
+  </div>
+  <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            Laval University
+          </p>
+      </div>
+  </div>
+
+<div class="quarto-title-meta">
+
+      
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">April 28, 2025</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+<div>
+  <div class="keywords">
+    <div class="block-title">Keywords</div>
+    <p>openalex, R, Philosophy of Biology</p>
+  </div>
+</div>
+
+</header>
+
+
+<section id="crossref-no-caption" class="level3">
+<h3 class="anchored" data-anchor-id="crossref-no-caption">crossref, no caption</h3>
+<div id="fig-plotly-sepal-length" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-plotly-sepal-length-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell" data-renderings="[&quot;light&quot;,&quot;dark&quot;]">
+<div class="cell-output-display">
+<div class="plotly html-widget html-fill-item" id="htmlwidget-432eed6abdd3b99ea190" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-432eed6abdd3b99ea190">{"x":{"visdat":{"19e4717b26a5":["function () ","plotlyVisDat"]},"cur_data":"19e4717b26a5","attrs":{"19e4717b26a5":{"x":{},"y":{},"box":{"visible":true},"meanline":{"visible":true},"points":"all","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"violin"}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"paper_bgcolor":"#ffffff","plot_bgcolor":"#ffffff","title":{"font":{"color":"#333333","size":20}},"xaxis":{"domain":[0,1],"automargin":true,"titlefont":{"color":"#333333","size":16},"tickfont":{"color":"#333333","size":14},"title":{"color":"#333333","size":16},"type":"category","categoryorder":"array","categoryarray":["setosa","versicolor","virginica"]},"yaxis":{"domain":[0,1],"automargin":true,"titlefont":{"color":"#333333","size":16},"tickfont":{"color":"#333333","size":14},"title":{"color":"#333333","size":16}},"hovermode":"closest","showlegend":false},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"data":[{"fillcolor":"rgba(31,119,180,0.5)","x":["setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica"],"y":[5.0999999999999996,4.9000000000000004,4.7000000000000002,4.5999999999999996,5,5.4000000000000004,4.5999999999999996,5,4.4000000000000004,4.9000000000000004,5.4000000000000004,4.7999999999999998,4.7999999999999998,4.2999999999999998,5.7999999999999998,5.7000000000000002,5.4000000000000004,5.0999999999999996,5.7000000000000002,5.0999999999999996,5.4000000000000004,5.0999999999999996,4.5999999999999996,5.0999999999999996,4.7999999999999998,5,5,5.2000000000000002,5.2000000000000002,4.7000000000000002,4.7999999999999998,5.4000000000000004,5.2000000000000002,5.5,4.9000000000000004,5,5.5,4.9000000000000004,4.4000000000000004,5.0999999999999996,5,4.5,4.4000000000000004,5,5.0999999999999996,4.7999999999999998,5.0999999999999996,4.5999999999999996,5.2999999999999998,5,7,6.4000000000000004,6.9000000000000004,5.5,6.5,5.7000000000000002,6.2999999999999998,4.9000000000000004,6.5999999999999996,5.2000000000000002,5,5.9000000000000004,6,6.0999999999999996,5.5999999999999996,6.7000000000000002,5.5999999999999996,5.7999999999999998,6.2000000000000002,5.5999999999999996,5.9000000000000004,6.0999999999999996,6.2999999999999998,6.0999999999999996,6.4000000000000004,6.5999999999999996,6.7999999999999998,6.7000000000000002,6,5.7000000000000002,5.5,5.5,5.7999999999999998,6,5.4000000000000004,6,6.7000000000000002,6.2999999999999998,5.5999999999999996,5.5,5.5,6.0999999999999996,5.7999999999999998,5,5.5999999999999996,5.7000000000000002,5.7000000000000002,6.2000000000000002,5.0999999999999996,5.7000000000000002,6.2999999999999998,5.7999999999999998,7.0999999999999996,6.2999999999999998,6.5,7.5999999999999996,4.9000000000000004,7.2999999999999998,6.7000000000000002,7.2000000000000002,6.5,6.4000000000000004,6.7999999999999998,5.7000000000000002,5.7999999999999998,6.4000000000000004,6.5,7.7000000000000002,7.7000000000000002,6,6.9000000000000004,5.5999999999999996,7.7000000000000002,6.2999999999999998,6.7000000000000002,7.2000000000000002,6.2000000000000002,6.0999999999999996,6.4000000000000004,7.2000000000000002,7.4000000000000004,7.9000000000000004,6.4000000000000004,6.2999999999999998,6.0999999999999996,7.7000000000000002,6.2999999999999998,6.4000000000000004,6,6.9000000000000004,6.7000000000000002,6.9000000000000004,5.7999999999999998,6.7999999999999998,6.7000000000000002,6.7000000000000002,6.2999999999999998,6.5,6.2000000000000002,5.9000000000000004],"box":{"visible":true},"meanline":{"visible":true},"points":"all","type":"violin","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+</div>
+<div class="cell-output-display">
+<div class="plotly html-widget html-fill-item" id="htmlwidget-df1fb03deca143ebd762" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-df1fb03deca143ebd762">{"x":{"visdat":{"19e4717b26a5":["function () ","plotlyVisDat"]},"cur_data":"19e4717b26a5","attrs":{"19e4717b26a5":{"x":{},"y":{},"box":{"visible":true},"meanline":{"visible":true},"points":"all","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"violin"}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"paper_bgcolor":"#282B30","plot_bgcolor":"#282B30","title":{"font":{"color":"#aaaaaa","size":20}},"xaxis":{"domain":[0,1],"automargin":true,"titlefont":{"color":"#aaaaaa","size":16},"tickfont":{"color":"#aaaaaa","size":14},"title":{"color":"#aaaaaa","size":16},"type":"category","categoryorder":"array","categoryarray":["setosa","versicolor","virginica"]},"yaxis":{"domain":[0,1],"automargin":true,"titlefont":{"color":"#aaaaaa","size":16},"tickfont":{"color":"#aaaaaa","size":14},"title":{"color":"#aaaaaa","size":16}},"hovermode":"closest","showlegend":false},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"data":[{"fillcolor":"rgba(31,119,180,0.5)","x":["setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica"],"y":[5.0999999999999996,4.9000000000000004,4.7000000000000002,4.5999999999999996,5,5.4000000000000004,4.5999999999999996,5,4.4000000000000004,4.9000000000000004,5.4000000000000004,4.7999999999999998,4.7999999999999998,4.2999999999999998,5.7999999999999998,5.7000000000000002,5.4000000000000004,5.0999999999999996,5.7000000000000002,5.0999999999999996,5.4000000000000004,5.0999999999999996,4.5999999999999996,5.0999999999999996,4.7999999999999998,5,5,5.2000000000000002,5.2000000000000002,4.7000000000000002,4.7999999999999998,5.4000000000000004,5.2000000000000002,5.5,4.9000000000000004,5,5.5,4.9000000000000004,4.4000000000000004,5.0999999999999996,5,4.5,4.4000000000000004,5,5.0999999999999996,4.7999999999999998,5.0999999999999996,4.5999999999999996,5.2999999999999998,5,7,6.4000000000000004,6.9000000000000004,5.5,6.5,5.7000000000000002,6.2999999999999998,4.9000000000000004,6.5999999999999996,5.2000000000000002,5,5.9000000000000004,6,6.0999999999999996,5.5999999999999996,6.7000000000000002,5.5999999999999996,5.7999999999999998,6.2000000000000002,5.5999999999999996,5.9000000000000004,6.0999999999999996,6.2999999999999998,6.0999999999999996,6.4000000000000004,6.5999999999999996,6.7999999999999998,6.7000000000000002,6,5.7000000000000002,5.5,5.5,5.7999999999999998,6,5.4000000000000004,6,6.7000000000000002,6.2999999999999998,5.5999999999999996,5.5,5.5,6.0999999999999996,5.7999999999999998,5,5.5999999999999996,5.7000000000000002,5.7000000000000002,6.2000000000000002,5.0999999999999996,5.7000000000000002,6.2999999999999998,5.7999999999999998,7.0999999999999996,6.2999999999999998,6.5,7.5999999999999996,4.9000000000000004,7.2999999999999998,6.7000000000000002,7.2000000000000002,6.5,6.4000000000000004,6.7999999999999998,5.7000000000000002,5.7999999999999998,6.4000000000000004,6.5,7.7000000000000002,7.7000000000000002,6,6.9000000000000004,5.5999999999999996,7.7000000000000002,6.2999999999999998,6.7000000000000002,7.2000000000000002,6.2000000000000002,6.0999999999999996,6.4000000000000004,7.2000000000000002,7.4000000000000004,7.9000000000000004,6.4000000000000004,6.2999999999999998,6.0999999999999996,7.7000000000000002,6.2999999999999998,6.4000000000000004,6,6.9000000000000004,6.7000000000000002,6.9000000000000004,5.7999999999999998,6.7999999999999998,6.7000000000000002,6.7000000000000002,6.2999999999999998,6.5,6.2000000000000002,5.9000000000000004],"box":{"visible":true},"meanline":{"visible":true},"points":"all","type":"violin","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+</div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: right;">Sepal.Length</th>
+<th style="text-align: right;">Sepal.Width</th>
+<th style="text-align: right;">Petal.Length</th>
+<th style="text-align: right;">Petal.Width</th>
+<th style="text-align: left;">Species</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">3.5</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4.9</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4.7</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4.6</td>
+<td style="text-align: right;">3.1</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">3.6</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.4</td>
+<td style="text-align: right;">3.9</td>
+<td style="text-align: right;">1.7</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4.6</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4.4</td>
+<td style="text-align: right;">2.9</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4.9</td>
+<td style="text-align: right;">3.1</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.4</td>
+<td style="text-align: right;">3.7</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4.8</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4.8</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4.3</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.8</td>
+<td style="text-align: right;">4.0</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.7</td>
+<td style="text-align: right;">4.4</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.4</td>
+<td style="text-align: right;">3.9</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">3.5</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.7</td>
+<td style="text-align: right;">3.8</td>
+<td style="text-align: right;">1.7</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">3.8</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.4</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">1.7</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">3.7</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4.6</td>
+<td style="text-align: right;">3.6</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">3.3</td>
+<td style="text-align: right;">1.7</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4.8</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">1.9</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.2</td>
+<td style="text-align: right;">3.5</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.2</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4.7</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4.8</td>
+<td style="text-align: right;">3.1</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.4</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.2</td>
+<td style="text-align: right;">4.1</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.5</td>
+<td style="text-align: right;">4.2</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4.9</td>
+<td style="text-align: right;">3.1</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.5</td>
+<td style="text-align: right;">3.5</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4.9</td>
+<td style="text-align: right;">3.6</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4.4</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">3.5</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4.5</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4.4</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">3.5</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">3.8</td>
+<td style="text-align: right;">1.9</td>
+<td style="text-align: right;">0.4</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4.8</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.3</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">3.8</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4.6</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.3</td>
+<td style="text-align: right;">3.7</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">3.3</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">setosa</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">7.0</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">4.7</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.4</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">4.5</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.9</td>
+<td style="text-align: right;">3.1</td>
+<td style="text-align: right;">4.9</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.5</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: right;">4.0</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.5</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">4.6</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.7</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">4.5</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.3</td>
+<td style="text-align: right;">3.3</td>
+<td style="text-align: right;">4.7</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4.9</td>
+<td style="text-align: right;">2.4</td>
+<td style="text-align: right;">3.3</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.6</td>
+<td style="text-align: right;">2.9</td>
+<td style="text-align: right;">4.6</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.2</td>
+<td style="text-align: right;">2.7</td>
+<td style="text-align: right;">3.9</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">2.0</td>
+<td style="text-align: right;">3.5</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.9</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">4.2</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.0</td>
+<td style="text-align: right;">2.2</td>
+<td style="text-align: right;">4.0</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.1</td>
+<td style="text-align: right;">2.9</td>
+<td style="text-align: right;">4.7</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">2.9</td>
+<td style="text-align: right;">3.6</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.7</td>
+<td style="text-align: right;">3.1</td>
+<td style="text-align: right;">4.4</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">4.5</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.8</td>
+<td style="text-align: right;">2.7</td>
+<td style="text-align: right;">4.1</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.2</td>
+<td style="text-align: right;">2.2</td>
+<td style="text-align: right;">4.5</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">3.9</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.9</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">4.8</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.1</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">4.0</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.3</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">4.9</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.1</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">4.7</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.4</td>
+<td style="text-align: right;">2.9</td>
+<td style="text-align: right;">4.3</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.6</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">4.4</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.8</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">4.8</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.7</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">1.7</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.0</td>
+<td style="text-align: right;">2.9</td>
+<td style="text-align: right;">4.5</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.7</td>
+<td style="text-align: right;">2.6</td>
+<td style="text-align: right;">3.5</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.5</td>
+<td style="text-align: right;">2.4</td>
+<td style="text-align: right;">3.8</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.5</td>
+<td style="text-align: right;">2.4</td>
+<td style="text-align: right;">3.7</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.8</td>
+<td style="text-align: right;">2.7</td>
+<td style="text-align: right;">3.9</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.0</td>
+<td style="text-align: right;">2.7</td>
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.4</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">4.5</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.0</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">4.5</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.7</td>
+<td style="text-align: right;">3.1</td>
+<td style="text-align: right;">4.7</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.3</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: right;">4.4</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">4.1</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.5</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">4.0</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.5</td>
+<td style="text-align: right;">2.6</td>
+<td style="text-align: right;">4.4</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.1</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">4.6</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.8</td>
+<td style="text-align: right;">2.6</td>
+<td style="text-align: right;">4.0</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: right;">3.3</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">2.7</td>
+<td style="text-align: right;">4.2</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.7</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">4.2</td>
+<td style="text-align: right;">1.2</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.7</td>
+<td style="text-align: right;">2.9</td>
+<td style="text-align: right;">4.2</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.2</td>
+<td style="text-align: right;">2.9</td>
+<td style="text-align: right;">4.3</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">1.1</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.7</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">4.1</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: left;">versicolor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.3</td>
+<td style="text-align: right;">3.3</td>
+<td style="text-align: right;">6.0</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.8</td>
+<td style="text-align: right;">2.7</td>
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">1.9</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">7.1</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">5.9</td>
+<td style="text-align: right;">2.1</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.3</td>
+<td style="text-align: right;">2.9</td>
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.5</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">5.8</td>
+<td style="text-align: right;">2.2</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7.6</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">6.6</td>
+<td style="text-align: right;">2.1</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4.9</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">4.5</td>
+<td style="text-align: right;">1.7</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7.3</td>
+<td style="text-align: right;">2.9</td>
+<td style="text-align: right;">6.3</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.7</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">5.8</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7.2</td>
+<td style="text-align: right;">3.6</td>
+<td style="text-align: right;">6.1</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.5</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">2.0</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.4</td>
+<td style="text-align: right;">2.7</td>
+<td style="text-align: right;">5.3</td>
+<td style="text-align: right;">1.9</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.8</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">5.5</td>
+<td style="text-align: right;">2.1</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.7</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">2.0</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.8</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">2.4</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.4</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">5.3</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.5</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">5.5</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7.7</td>
+<td style="text-align: right;">3.8</td>
+<td style="text-align: right;">6.7</td>
+<td style="text-align: right;">2.2</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">7.7</td>
+<td style="text-align: right;">2.6</td>
+<td style="text-align: right;">6.9</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.0</td>
+<td style="text-align: right;">2.2</td>
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.9</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">5.7</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">4.9</td>
+<td style="text-align: right;">2.0</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">7.7</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">6.7</td>
+<td style="text-align: right;">2.0</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.3</td>
+<td style="text-align: right;">2.7</td>
+<td style="text-align: right;">4.9</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.7</td>
+<td style="text-align: right;">3.3</td>
+<td style="text-align: right;">5.7</td>
+<td style="text-align: right;">2.1</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7.2</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">6.0</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.2</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">4.8</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.1</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">4.9</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.4</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">2.1</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7.2</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">5.8</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">7.4</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">6.1</td>
+<td style="text-align: right;">1.9</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7.9</td>
+<td style="text-align: right;">3.8</td>
+<td style="text-align: right;">6.4</td>
+<td style="text-align: right;">2.0</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.4</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">2.2</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.3</td>
+<td style="text-align: right;">2.8</td>
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.1</td>
+<td style="text-align: right;">2.6</td>
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">1.4</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7.7</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">6.1</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.3</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">2.4</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.4</td>
+<td style="text-align: right;">3.1</td>
+<td style="text-align: right;">5.5</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.0</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">4.8</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.9</td>
+<td style="text-align: right;">3.1</td>
+<td style="text-align: right;">5.4</td>
+<td style="text-align: right;">2.1</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.7</td>
+<td style="text-align: right;">3.1</td>
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">2.4</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.9</td>
+<td style="text-align: right;">3.1</td>
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5.8</td>
+<td style="text-align: right;">2.7</td>
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">1.9</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.8</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">5.9</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.7</td>
+<td style="text-align: right;">3.3</td>
+<td style="text-align: right;">5.7</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.7</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">5.2</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.3</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">5.0</td>
+<td style="text-align: right;">1.9</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6.5</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">5.2</td>
+<td style="text-align: right;">2.0</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6.2</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">5.4</td>
+<td style="text-align: right;">2.3</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5.9</td>
+<td style="text-align: right;">3.0</td>
+<td style="text-align: right;">5.1</td>
+<td style="text-align: right;">1.8</td>
+<td style="text-align: left;">virginica</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig quarto-uncaptioned" id="fig-plotly-sepal-length-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1
+</figcaption>
+</figure>
+</div>
+</section>
+<section id="caption-no-crossref" class="level3">
+<h3 class="anchored" data-anchor-id="caption-no-crossref">caption, no crossref</h3>
+<div>
+<div class="cell" data-renderings="[&quot;light&quot;,&quot;dark&quot;]">
+<div class="light-content">
+<div class="plotly html-widget html-fill-item" id="htmlwidget-45d95c121e1937b0f23c" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-45d95c121e1937b0f23c">{"x":{"visdat":{"19e42b78686f":["function () ","plotlyVisDat"]},"cur_data":"19e42b78686f","attrs":{"19e42b78686f":{"x":{},"y":{},"box":{"visible":true},"meanline":{"visible":true},"points":"all","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"violin"}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"paper_bgcolor":"#ffffff","plot_bgcolor":"#ffffff","title":{"font":{"color":"#333333","size":20}},"xaxis":{"domain":[0,1],"automargin":true,"titlefont":{"color":"#333333","size":16},"tickfont":{"color":"#333333","size":14},"title":{"color":"#333333","size":16},"type":"category","categoryorder":"array","categoryarray":["setosa","versicolor","virginica"]},"yaxis":{"domain":[0,1],"automargin":true,"titlefont":{"color":"#333333","size":16},"tickfont":{"color":"#333333","size":14},"title":{"color":"#333333","size":16}},"hovermode":"closest","showlegend":false},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"data":[{"fillcolor":"rgba(31,119,180,0.5)","x":["setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica"],"y":[0.20000000000000001,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.40000000000000002,0.29999999999999999,0.20000000000000001,0.20000000000000001,0.10000000000000001,0.20000000000000001,0.20000000000000001,0.10000000000000001,0.10000000000000001,0.20000000000000001,0.40000000000000002,0.40000000000000002,0.29999999999999999,0.29999999999999999,0.29999999999999999,0.20000000000000001,0.40000000000000002,0.20000000000000001,0.5,0.20000000000000001,0.20000000000000001,0.40000000000000002,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.40000000000000002,0.10000000000000001,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.10000000000000001,0.20000000000000001,0.20000000000000001,0.29999999999999999,0.29999999999999999,0.20000000000000001,0.59999999999999998,0.40000000000000002,0.29999999999999999,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.20000000000000001,1.3999999999999999,1.5,1.5,1.3,1.5,1.3,1.6000000000000001,1,1.3,1.3999999999999999,1,1.5,1,1.3999999999999999,1.3,1.3999999999999999,1.5,1,1.5,1.1000000000000001,1.8,1.3,1.5,1.2,1.3,1.3999999999999999,1.3999999999999999,1.7,1.5,1,1.1000000000000001,1,1.2,1.6000000000000001,1.5,1.6000000000000001,1.5,1.3,1.3,1.3,1.2,1.3999999999999999,1.2,1,1.3,1.2,1.3,1.3,1.1000000000000001,1.3,2.5,1.8999999999999999,2.1000000000000001,1.8,2.2000000000000002,2.1000000000000001,1.7,1.8,1.8,2.5,2,1.8999999999999999,2.1000000000000001,2,2.3999999999999999,2.2999999999999998,1.8,2.2000000000000002,2.2999999999999998,1.5,2.2999999999999998,2,2,1.8,2.1000000000000001,1.8,1.8,1.8,2.1000000000000001,1.6000000000000001,1.8999999999999999,2,2.2000000000000002,1.5,1.3999999999999999,2.2999999999999998,2.3999999999999999,1.8,1.8,2.1000000000000001,2.3999999999999999,2.2999999999999998,1.8999999999999999,2.2999999999999998,2.5,2.2999999999999998,1.8999999999999999,2,2.2999999999999998,1.8],"box":{"visible":true},"meanline":{"visible":true},"points":"all","type":"violin","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+</div>
+<div class="dark-content">
+<div class="plotly html-widget html-fill-item" id="htmlwidget-4256c057a31d78ad19e5" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-4256c057a31d78ad19e5">{"x":{"visdat":{"19e42b78686f":["function () ","plotlyVisDat"]},"cur_data":"19e42b78686f","attrs":{"19e42b78686f":{"x":{},"y":{},"box":{"visible":true},"meanline":{"visible":true},"points":"all","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"violin"}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"paper_bgcolor":"#282B30","plot_bgcolor":"#282B30","title":{"font":{"color":"#aaaaaa","size":20}},"xaxis":{"domain":[0,1],"automargin":true,"titlefont":{"color":"#aaaaaa","size":16},"tickfont":{"color":"#aaaaaa","size":14},"title":{"color":"#aaaaaa","size":16},"type":"category","categoryorder":"array","categoryarray":["setosa","versicolor","virginica"]},"yaxis":{"domain":[0,1],"automargin":true,"titlefont":{"color":"#aaaaaa","size":16},"tickfont":{"color":"#aaaaaa","size":14},"title":{"color":"#aaaaaa","size":16}},"hovermode":"closest","showlegend":false},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"data":[{"fillcolor":"rgba(31,119,180,0.5)","x":["setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","setosa","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","versicolor","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica","virginica"],"y":[0.20000000000000001,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.40000000000000002,0.29999999999999999,0.20000000000000001,0.20000000000000001,0.10000000000000001,0.20000000000000001,0.20000000000000001,0.10000000000000001,0.10000000000000001,0.20000000000000001,0.40000000000000002,0.40000000000000002,0.29999999999999999,0.29999999999999999,0.29999999999999999,0.20000000000000001,0.40000000000000002,0.20000000000000001,0.5,0.20000000000000001,0.20000000000000001,0.40000000000000002,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.40000000000000002,0.10000000000000001,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.10000000000000001,0.20000000000000001,0.20000000000000001,0.29999999999999999,0.29999999999999999,0.20000000000000001,0.59999999999999998,0.40000000000000002,0.29999999999999999,0.20000000000000001,0.20000000000000001,0.20000000000000001,0.20000000000000001,1.3999999999999999,1.5,1.5,1.3,1.5,1.3,1.6000000000000001,1,1.3,1.3999999999999999,1,1.5,1,1.3999999999999999,1.3,1.3999999999999999,1.5,1,1.5,1.1000000000000001,1.8,1.3,1.5,1.2,1.3,1.3999999999999999,1.3999999999999999,1.7,1.5,1,1.1000000000000001,1,1.2,1.6000000000000001,1.5,1.6000000000000001,1.5,1.3,1.3,1.3,1.2,1.3999999999999999,1.2,1,1.3,1.2,1.3,1.3,1.1000000000000001,1.3,2.5,1.8999999999999999,2.1000000000000001,1.8,2.2000000000000002,2.1000000000000001,1.7,1.8,1.8,2.5,2,1.8999999999999999,2.1000000000000001,2,2.3999999999999999,2.2999999999999998,1.8,2.2000000000000002,2.2999999999999998,1.5,2.2999999999999998,2,2,1.8,2.1000000000000001,1.8,1.8,1.8,2.1000000000000001,1.6000000000000001,1.8999999999999999,2,2.2000000000000002,1.5,1.3999999999999999,2.2999999999999998,2.3999999999999999,1.8,1.8,2.1000000000000001,2.3999999999999999,2.2999999999999998,1.8999999999999999,2.2999999999999998,2.5,2.2999999999999998,1.8999999999999999,2,2.2999999999999998,1.8],"box":{"visible":true},"meanline":{"visible":true},"points":"all","type":"violin","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+</div>
+</section>
+<section id="setup" class="level2">
+<h2 class="anchored" data-anchor-id="setup">Setup</h2>
+<p>So, we get around 1, 913 documents. Out of them, how many are articles? A majority, in fact, 1 863 are considered as article by openalex</p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 7 × 2
+  type          n
+  &lt;chr&gt;     &lt;int&gt;
+1 article    1863
+2 review       23
+3 editorial     8
+4 paratext      8
+5 letter        7
+6 erratum       3
+7 preprint      1</code></pre>
+</div>
+</div>
+<p>Now, for all of these articles, how many of them got an abstract?</p>
+<p>Still, we see that most of our articles have an abstract.</p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 19 × 2
+    year     n
+   &lt;dbl&gt; &lt;int&gt;
+ 1  2007     1
+ 2  2008     1
+ 3  2009     1
+ 4  2010     1
+ 5  2011     1
+ 6  2012     1
+ 7  2013     1
+ 8  2014     1
+ 9  2015     1
+10  2016     1
+11  2017     1
+12  2018     1
+13  2019     1
+14  2020     1
+15  2021     1
+16  2022     1
+17  2023     1
+18  2024     1
+19  2025     1</code></pre>
+</div>
+</div>
+</section>
+<section id="example" class="level2">
+<h2 class="anchored" data-anchor-id="example">Example</h2>
+</section>
+<section id="ggplot2" class="level2">
+<h2 class="anchored" data-anchor-id="ggplot2">ggplot2</h2>
+<div class="cell" data-renderings="[&quot;light&quot;,&quot;dark&quot;]">
+<div class="light-content">
+<div class="plotly html-widget html-fill-item" id="htmlwidget-4087d5a24f8b6cae2943" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-4087d5a24f8b6cae2943">{"x":{"data":[{"x":[2007,2007.2278481012659,2007.4556962025317,2007.6835443037974,2007.9113924050632,2008.1392405063291,2008.367088607595,2008.5949367088608,2008.8227848101267,2009.0506329113923,2009.2784810126582,2009.506329113924,2009.7341772151899,2009.9620253164558,2010.1898734177216,2010.4177215189873,2010.6455696202531,2010.873417721519,2011.1012658227849,2011.3291139240507,2011.5569620253164,2011.7848101265822,2012.0126582278481,2012.2405063291139,2012.4683544303798,2012.6962025316457,2012.9240506329113,2013.1518987341772,2013.379746835443,2013.6075949367089,2013.8354430379748,2014.0632911392406,2014.2911392405063,2014.5189873417721,2014.746835443038,2014.9746835443038,2015.2025316455697,2015.4303797468353,2015.6582278481012,2015.8860759493671,2016.1139240506329,2016.3417721518988,2016.5696202531647,2016.7974683544303,2017.0253164556962,2017.253164556962,2017.4810126582279,2017.7088607594937,2017.9367088607594,2018.1645569620252,2018.3924050632911,2018.620253164557,2018.8481012658228,2019.0759493670887,2019.3037974683543,2019.5316455696202,2019.7594936708861,2019.9873417721519,2020.2151898734178,2020.4430379746836,2020.6708860759493,2020.8987341772151,2021.126582278481,2021.3544303797469,2021.5822784810127,2021.8101265822784,2022.0379746835442,2022.2658227848101,2022.493670886076,2022.7215189873418,2022.9493670886077,2023.1772151898733,2023.4050632911392,2023.632911392405,2023.8607594936709,2024.0886075949368,2024.3164556962026,2024.5443037974683,2024.7721518987341,2025],"y":[0.022405497865496588,0.022203151379065093,0.022013000596679225,0.021832510482511756,0.021659146000734927,0.021491532695134905,0.02133319561562615,0.02118539399988351,0.021049003056605821,0.020924824994804261,0.020811616756874582,0.02070889332317238,0.020617011670511623,0.020536328775706297,0.020467201615570363,0.020409987166917849,0.020365042406562617,0.020332724311318707,0.020309710664766646,0.020271475851527311,0.020220651436553432,0.020166052828756598,0.020116495437048562,0.020080794670341025,0.020067765937545695,0.020086224647574275,0.020144986209338384,0.020289562802206045,0.020594822134452812,0.020965943933812254,0.021296805247219081,0.021492232205842003,0.021670872828605338,0.021887643968244261,0.022131732333079253,0.022392324631430968,0.022658607571620047,0.02291976786196688,0.023164992210792643,0.023383467326417707,0.023558177477882379,0.023654646579477957,0.023690491384468382,0.023691036845581603,0.023681607915545515,0.023687529547088051,0.023734126692937133,0.023846724305820681,0.024050647338466374,0.023952923006970942,0.02284102683045092,0.021448924127061557,0.020582496602451365,0.020875615974619174,0.02077502452666834,0.020014159066450828,0.01898374395663955,0.018074503559907765,0.017677162238928734,0.018182444356375727,0.019981074274919432,0.023463776357236388,0.028719048988455287,0.034544805025424084,0.040826518929567082,0.04763247445939775,0.055030955373450145,0.063090245430238279,0.071878628388282712,0.081464388006103949,0.091915808042222547,0.10324434118200929,0.11534900420106185,0.12821276901943496,0.14182257734658554,0.15616537089197055,0.17122809136504691,0.18699768047525539,0.20346107993208443,0.2206052314449756],"text":["year: 2007.000<br />ratio: 0.02240550","year: 2007.228<br />ratio: 0.02220315","year: 2007.456<br />ratio: 0.02201300","year: 2007.684<br />ratio: 0.02183251","year: 2007.911<br />ratio: 0.02165915","year: 2008.139<br />ratio: 0.02149153","year: 2008.367<br />ratio: 0.02133320","year: 2008.595<br />ratio: 0.02118539","year: 2008.823<br />ratio: 0.02104900","year: 2009.051<br />ratio: 0.02092482","year: 2009.278<br />ratio: 0.02081162","year: 2009.506<br />ratio: 0.02070889","year: 2009.734<br />ratio: 0.02061701","year: 2009.962<br />ratio: 0.02053633","year: 2010.190<br />ratio: 0.02046720","year: 2010.418<br />ratio: 0.02040999","year: 2010.646<br />ratio: 0.02036504","year: 2010.873<br />ratio: 0.02033272","year: 2011.101<br />ratio: 0.02030971","year: 2011.329<br />ratio: 0.02027148","year: 2011.557<br />ratio: 0.02022065","year: 2011.785<br />ratio: 0.02016605","year: 2012.013<br />ratio: 0.02011650","year: 2012.241<br />ratio: 0.02008079","year: 2012.468<br />ratio: 0.02006777","year: 2012.696<br />ratio: 0.02008622","year: 2012.924<br />ratio: 0.02014499","year: 2013.152<br />ratio: 0.02028956","year: 2013.380<br />ratio: 0.02059482","year: 2013.608<br />ratio: 0.02096594","year: 2013.835<br />ratio: 0.02129681","year: 2014.063<br />ratio: 0.02149223","year: 2014.291<br />ratio: 0.02167087","year: 2014.519<br />ratio: 0.02188764","year: 2014.747<br />ratio: 0.02213173","year: 2014.975<br />ratio: 0.02239232","year: 2015.203<br />ratio: 0.02265861","year: 2015.430<br />ratio: 0.02291977","year: 2015.658<br />ratio: 0.02316499","year: 2015.886<br />ratio: 0.02338347","year: 2016.114<br />ratio: 0.02355818","year: 2016.342<br />ratio: 0.02365465","year: 2016.570<br />ratio: 0.02369049","year: 2016.797<br />ratio: 0.02369104","year: 2017.025<br />ratio: 0.02368161","year: 2017.253<br />ratio: 0.02368753","year: 2017.481<br />ratio: 0.02373413","year: 2017.709<br />ratio: 0.02384672","year: 2017.937<br />ratio: 0.02405065","year: 2018.165<br />ratio: 0.02395292","year: 2018.392<br />ratio: 0.02284103","year: 2018.620<br />ratio: 0.02144892","year: 2018.848<br />ratio: 0.02058250","year: 2019.076<br />ratio: 0.02087562","year: 2019.304<br />ratio: 0.02077502","year: 2019.532<br />ratio: 0.02001416","year: 2019.759<br />ratio: 0.01898374","year: 2019.987<br />ratio: 0.01807450","year: 2020.215<br />ratio: 0.01767716","year: 2020.443<br />ratio: 0.01818244","year: 2020.671<br />ratio: 0.01998107","year: 2020.899<br />ratio: 0.02346378","year: 2021.127<br />ratio: 0.02871905","year: 2021.354<br />ratio: 0.03454481","year: 2021.582<br />ratio: 0.04082652","year: 2021.810<br />ratio: 0.04763247","year: 2022.038<br />ratio: 0.05503096","year: 2022.266<br />ratio: 0.06309025","year: 2022.494<br />ratio: 0.07187863","year: 2022.722<br />ratio: 0.08146439","year: 2022.949<br />ratio: 0.09191581","year: 2023.177<br />ratio: 0.10324434","year: 2023.405<br />ratio: 0.11534900","year: 2023.633<br />ratio: 0.12821277","year: 2023.861<br />ratio: 0.14182258","year: 2024.089<br />ratio: 0.15616537","year: 2024.316<br />ratio: 0.17122809","year: 2024.544<br />ratio: 0.18699768","year: 2024.772<br />ratio: 0.20346108","year: 2025.000<br />ratio: 0.22060523"],"type":"scatter","mode":"lines","name":"fitted values","line":{"width":3.7795275590551185,"color":"rgba(51,102,255,1)","dash":"solid"},"hoveron":"points","showlegend":false,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"x":[2007,2007.2278481012659,2007.4556962025317,2007.6835443037974,2007.9113924050632,2008.1392405063291,2008.367088607595,2008.5949367088608,2008.8227848101267,2009.0506329113923,2009.2784810126582,2009.506329113924,2009.7341772151899,2009.9620253164558,2010.1898734177216,2010.4177215189873,2010.6455696202531,2010.873417721519,2011.1012658227849,2011.3291139240507,2011.5569620253164,2011.7848101265822,2012.0126582278481,2012.2405063291139,2012.4683544303798,2012.6962025316457,2012.9240506329113,2013.1518987341772,2013.379746835443,2013.6075949367089,2013.8354430379748,2014.0632911392406,2014.2911392405063,2014.5189873417721,2014.746835443038,2014.9746835443038,2015.2025316455697,2015.4303797468353,2015.6582278481012,2015.8860759493671,2016.1139240506329,2016.3417721518988,2016.5696202531647,2016.7974683544303,2017.0253164556962,2017.253164556962,2017.4810126582279,2017.7088607594937,2017.9367088607594,2018.1645569620252,2018.3924050632911,2018.620253164557,2018.8481012658228,2019.0759493670887,2019.3037974683543,2019.5316455696202,2019.7594936708861,2019.9873417721519,2020.2151898734178,2020.4430379746836,2020.6708860759493,2020.8987341772151,2021.126582278481,2021.3544303797469,2021.5822784810127,2021.8101265822784,2022.0379746835442,2022.2658227848101,2022.493670886076,2022.7215189873418,2022.9493670886077,2023.1772151898733,2023.4050632911392,2023.632911392405,2023.8607594936709,2024.0886075949368,2024.3164556962026,2024.5443037974683,2024.7721518987341,2025,2025,2025,2024.7721518987341,2024.5443037974683,2024.3164556962026,2024.0886075949368,2023.8607594936709,2023.632911392405,2023.4050632911392,2023.1772151898733,2022.9493670886077,2022.7215189873418,2022.493670886076,2022.2658227848101,2022.0379746835442,2021.8101265822784,2021.5822784810127,2021.3544303797469,2021.126582278481,2020.8987341772151,2020.6708860759493,2020.4430379746836,2020.2151898734178,2019.9873417721519,2019.7594936708861,2019.5316455696202,2019.3037974683543,2019.0759493670887,2018.8481012658228,2018.620253164557,2018.3924050632911,2018.1645569620252,2017.9367088607594,2017.7088607594937,2017.4810126582279,2017.253164556962,2017.0253164556962,2016.7974683544303,2016.5696202531647,2016.3417721518988,2016.1139240506329,2015.8860759493671,2015.6582278481012,2015.4303797468353,2015.2025316455697,2014.9746835443038,2014.746835443038,2014.5189873417721,2014.2911392405063,2014.0632911392406,2013.8354430379748,2013.6075949367089,2013.379746835443,2013.1518987341772,2012.9240506329113,2012.6962025316457,2012.4683544303798,2012.2405063291139,2012.0126582278481,2011.7848101265822,2011.5569620253164,2011.3291139240507,2011.1012658227849,2010.873417721519,2010.6455696202531,2010.4177215189873,2010.1898734177216,2009.9620253164558,2009.7341772151899,2009.506329113924,2009.2784810126582,2009.0506329113923,2008.8227848101267,2008.5949367088608,2008.367088607595,2008.1392405063291,2007.9113924050632,2007.6835443037974,2007.4556962025317,2007.2278481012659,2007,2007],"y":[-0.052389970193620891,-0.046415471493751609,-0.040961910799503204,-0.036084759041987741,-0.031821037839627045,-0.028180756054663126,-0.025154546318513302,-0.022741661188523981,-0.020927399090266766,-0.019677008679467436,-0.018912296710081107,-0.018545627365624141,-0.018498754790499027,-0.018699125314209433,-0.019081768345309738,-0.019589999603975578,-0.020175291277189929,-0.020796743344470969,-0.021403438020032819,-0.021864414055795797,-0.022217548175561513,-0.022543305203539029,-0.022901407308790575,-0.023308520589733907,-0.023728706087846239,-0.024076831142089496,-0.02423322689970353,-0.023978749629955939,-0.023344017882352974,-0.022960729445308043,-0.022953035878631518,-0.022878973063195335,-0.02230224209913638,-0.021442960952103456,-0.020628695492761986,-0.020113477500199053,-0.0200117674348744,-0.020267639882668512,-0.020674830689003436,-0.020937150622318292,-0.02076244047085362,-0.020185176320318115,-0.01949691636016701,-0.018979338160912851,-0.018824194216084514,-0.019072898278753195,-0.019596478227410591,-0.020126390621921057,-0.020320557930570977,-0.020296918118879678,-0.021085646548669384,-0.022489915889744236,-0.023685815829710626,-0.023502597134422747,-0.023388031262995431,-0.0237823129589411,-0.024405571303435375,-0.024943399185931345,-0.025032195793366872,-0.024255755255739177,-0.022154815632403648,-0.018249372327563029,-0.012410418667334347,-0.0059955286583284195,0.00082653215867369012,0.0080835044985176768,0.015795501283534442,0.02397447896922765,0.032624107699486204,0.04174047453914826,0.051313974367950856,0.061270758100556849,0.071430017078719502,0.081730571035888683,0.092139442296794938,0.10264449875258547,0.11324903397226899,0.12396584426405431,0.13481221093161744,0.14580634133350434,0.14580634133350434,0.29540412155644685,0.27210994893255142,0.25002951668645645,0.22920714875782483,0.20968624303135563,0.19150571239637615,0.17469496700298123,0.15926799132340419,0.14521792426346172,0.13251764171649424,0.12118830147305965,0.11113314907707922,0.10220601189124891,0.094266409463365841,0.087181444420277823,0.080826505700460474,0.075085138709176588,0.069848516644244921,0.065176925042035802,0.062116964182242509,0.06062064396849063,0.060386520271224341,0.061092406305746874,0.062373059216714474,0.063810631091842762,0.064938080316332109,0.065253829083661091,0.064850809034613349,0.06538776414386735,0.066767700209571221,0.068202764132821558,0.068421852607503719,0.067819839233562412,0.067064731613284856,0.0664479573729293,0.066187410047175543,0.066361411852076058,0.066877899129103774,0.067494469479274025,0.067878795426618371,0.067704085275153703,0.067004815110588728,0.066107175606602273,0.065328982578114494,0.06489812676306099,0.064892160158920492,0.065218248888591984,0.065643987756347055,0.065863437474879341,0.065546646373069672,0.064892617312932555,0.064533662151258595,0.064557875234368026,0.064523199318380298,0.064249280437238043,0.063864237962937637,0.063470109930415963,0.063134398182887699,0.062875410861052222,0.062658851048668376,0.062407365758850419,0.062022859349566112,0.061462191967108379,0.060905376090315162,0.060409973937811279,0.060016171576450464,0.059771782865622028,0.059732778131522273,0.059963414011968905,0.060535530223830271,0.061526658669075959,0.063025405203478407,0.065112449188290997,0.067820937549765606,0.07116382144493294,0.075139329841096891,0.079749780007011245,0.084987911992861653,0.090821774251881787,0.097200965924614066,-0.052389970193620891],"text":["year: 2007.000<br />ratio: 0.02240550","year: 2007.228<br />ratio: 0.02220315","year: 2007.456<br />ratio: 0.02201300","year: 2007.684<br />ratio: 0.02183251","year: 2007.911<br />ratio: 0.02165915","year: 2008.139<br />ratio: 0.02149153","year: 2008.367<br />ratio: 0.02133320","year: 2008.595<br />ratio: 0.02118539","year: 2008.823<br />ratio: 0.02104900","year: 2009.051<br />ratio: 0.02092482","year: 2009.278<br />ratio: 0.02081162","year: 2009.506<br />ratio: 0.02070889","year: 2009.734<br />ratio: 0.02061701","year: 2009.962<br />ratio: 0.02053633","year: 2010.190<br />ratio: 0.02046720","year: 2010.418<br />ratio: 0.02040999","year: 2010.646<br />ratio: 0.02036504","year: 2010.873<br />ratio: 0.02033272","year: 2011.101<br />ratio: 0.02030971","year: 2011.329<br />ratio: 0.02027148","year: 2011.557<br />ratio: 0.02022065","year: 2011.785<br />ratio: 0.02016605","year: 2012.013<br />ratio: 0.02011650","year: 2012.241<br />ratio: 0.02008079","year: 2012.468<br />ratio: 0.02006777","year: 2012.696<br />ratio: 0.02008622","year: 2012.924<br />ratio: 0.02014499","year: 2013.152<br />ratio: 0.02028956","year: 2013.380<br />ratio: 0.02059482","year: 2013.608<br />ratio: 0.02096594","year: 2013.835<br />ratio: 0.02129681","year: 2014.063<br />ratio: 0.02149223","year: 2014.291<br />ratio: 0.02167087","year: 2014.519<br />ratio: 0.02188764","year: 2014.747<br />ratio: 0.02213173","year: 2014.975<br />ratio: 0.02239232","year: 2015.203<br />ratio: 0.02265861","year: 2015.430<br />ratio: 0.02291977","year: 2015.658<br />ratio: 0.02316499","year: 2015.886<br />ratio: 0.02338347","year: 2016.114<br />ratio: 0.02355818","year: 2016.342<br />ratio: 0.02365465","year: 2016.570<br />ratio: 0.02369049","year: 2016.797<br />ratio: 0.02369104","year: 2017.025<br />ratio: 0.02368161","year: 2017.253<br />ratio: 0.02368753","year: 2017.481<br />ratio: 0.02373413","year: 2017.709<br />ratio: 0.02384672","year: 2017.937<br />ratio: 0.02405065","year: 2018.165<br />ratio: 0.02395292","year: 2018.392<br />ratio: 0.02284103","year: 2018.620<br />ratio: 0.02144892","year: 2018.848<br />ratio: 0.02058250","year: 2019.076<br />ratio: 0.02087562","year: 2019.304<br />ratio: 0.02077502","year: 2019.532<br />ratio: 0.02001416","year: 2019.759<br />ratio: 0.01898374","year: 2019.987<br />ratio: 0.01807450","year: 2020.215<br />ratio: 0.01767716","year: 2020.443<br />ratio: 0.01818244","year: 2020.671<br />ratio: 0.01998107","year: 2020.899<br />ratio: 0.02346378","year: 2021.127<br />ratio: 0.02871905","year: 2021.354<br />ratio: 0.03454481","year: 2021.582<br />ratio: 0.04082652","year: 2021.810<br />ratio: 0.04763247","year: 2022.038<br />ratio: 0.05503096","year: 2022.266<br />ratio: 0.06309025","year: 2022.494<br />ratio: 0.07187863","year: 2022.722<br />ratio: 0.08146439","year: 2022.949<br />ratio: 0.09191581","year: 2023.177<br />ratio: 0.10324434","year: 2023.405<br />ratio: 0.11534900","year: 2023.633<br />ratio: 0.12821277","year: 2023.861<br />ratio: 0.14182258","year: 2024.089<br />ratio: 0.15616537","year: 2024.316<br />ratio: 0.17122809","year: 2024.544<br />ratio: 0.18699768","year: 2024.772<br />ratio: 0.20346108","year: 2025.000<br />ratio: 0.22060523","year: 2025.000<br />ratio: 0.22060523","year: 2025.000<br />ratio: 0.22060523","year: 2024.772<br />ratio: 0.20346108","year: 2024.544<br />ratio: 0.18699768","year: 2024.316<br />ratio: 0.17122809","year: 2024.089<br />ratio: 0.15616537","year: 2023.861<br />ratio: 0.14182258","year: 2023.633<br />ratio: 0.12821277","year: 2023.405<br />ratio: 0.11534900","year: 2023.177<br />ratio: 0.10324434","year: 2022.949<br />ratio: 0.09191581","year: 2022.722<br />ratio: 0.08146439","year: 2022.494<br />ratio: 0.07187863","year: 2022.266<br />ratio: 0.06309025","year: 2022.038<br />ratio: 0.05503096","year: 2021.810<br />ratio: 0.04763247","year: 2021.582<br />ratio: 0.04082652","year: 2021.354<br />ratio: 0.03454481","year: 2021.127<br />ratio: 0.02871905","year: 2020.899<br />ratio: 0.02346378","year: 2020.671<br />ratio: 0.01998107","year: 2020.443<br />ratio: 0.01818244","year: 2020.215<br />ratio: 0.01767716","year: 2019.987<br />ratio: 0.01807450","year: 2019.759<br />ratio: 0.01898374","year: 2019.532<br />ratio: 0.02001416","year: 2019.304<br />ratio: 0.02077502","year: 2019.076<br />ratio: 0.02087562","year: 2018.848<br />ratio: 0.02058250","year: 2018.620<br />ratio: 0.02144892","year: 2018.392<br />ratio: 0.02284103","year: 2018.165<br />ratio: 0.02395292","year: 2017.937<br />ratio: 0.02405065","year: 2017.709<br />ratio: 0.02384672","year: 2017.481<br />ratio: 0.02373413","year: 2017.253<br />ratio: 0.02368753","year: 2017.025<br />ratio: 0.02368161","year: 2016.797<br />ratio: 0.02369104","year: 2016.570<br />ratio: 0.02369049","year: 2016.342<br />ratio: 0.02365465","year: 2016.114<br />ratio: 0.02355818","year: 2015.886<br />ratio: 0.02338347","year: 2015.658<br />ratio: 0.02316499","year: 2015.430<br />ratio: 0.02291977","year: 2015.203<br />ratio: 0.02265861","year: 2014.975<br />ratio: 0.02239232","year: 2014.747<br />ratio: 0.02213173","year: 2014.519<br />ratio: 0.02188764","year: 2014.291<br />ratio: 0.02167087","year: 2014.063<br />ratio: 0.02149223","year: 2013.835<br />ratio: 0.02129681","year: 2013.608<br />ratio: 0.02096594","year: 2013.380<br />ratio: 0.02059482","year: 2013.152<br />ratio: 0.02028956","year: 2012.924<br />ratio: 0.02014499","year: 2012.696<br />ratio: 0.02008622","year: 2012.468<br />ratio: 0.02006777","year: 2012.241<br />ratio: 0.02008079","year: 2012.013<br />ratio: 0.02011650","year: 2011.785<br />ratio: 0.02016605","year: 2011.557<br />ratio: 0.02022065","year: 2011.329<br />ratio: 0.02027148","year: 2011.101<br />ratio: 0.02030971","year: 2010.873<br />ratio: 0.02033272","year: 2010.646<br />ratio: 0.02036504","year: 2010.418<br />ratio: 0.02040999","year: 2010.190<br />ratio: 0.02046720","year: 2009.962<br />ratio: 0.02053633","year: 2009.734<br />ratio: 0.02061701","year: 2009.506<br />ratio: 0.02070889","year: 2009.278<br />ratio: 0.02081162","year: 2009.051<br />ratio: 0.02092482","year: 2008.823<br />ratio: 0.02104900","year: 2008.595<br />ratio: 0.02118539","year: 2008.367<br />ratio: 0.02133320","year: 2008.139<br />ratio: 0.02149153","year: 2007.911<br />ratio: 0.02165915","year: 2007.684<br />ratio: 0.02183251","year: 2007.456<br />ratio: 0.02201300","year: 2007.228<br />ratio: 0.02220315","year: 2007.000<br />ratio: 0.02240550","year: 2007.000<br />ratio: 0.02240550"],"type":"scatter","mode":"lines","line":{"width":3.7795275590551185,"color":"transparent","dash":"solid"},"fill":"toself","fillcolor":"rgba(153,153,153,0.4)","hoveron":"points","hoverinfo":"x+y","showlegend":false,"xaxis":"x","yaxis":"y","frame":null},{"x":[1986,1987,1988,1989,1990,1991,1992,1993,1994,1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025],"y":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,0.018518518518518517,0.023809523809523808,0.026315789473684209,0.021276595744680851,0.016393442622950821,0.020833333333333332,0.02,0.016666666666666666,0.027027027027027029,0.02564102564102564,0.024390243902439025,0.026315789473684209,0.017857142857142856,0.027027027027027029,0.030303030303030304,0.034482758620689655,0.040000000000000001,0.038461538461538464,0.33333333333333331],"text":["year: 1986<br />ratio:         NA","year: 1987<br />ratio:         NA","year: 1988<br />ratio:         NA","year: 1989<br />ratio:         NA","year: 1990<br />ratio:         NA","year: 1991<br />ratio:         NA","year: 1992<br />ratio:         NA","year: 1993<br />ratio:         NA","year: 1994<br />ratio:         NA","year: 1995<br />ratio:         NA","year: 1996<br />ratio:         NA","year: 1997<br />ratio:         NA","year: 1998<br />ratio:         NA","year: 1999<br />ratio:         NA","year: 2000<br />ratio:         NA","year: 2001<br />ratio:         NA","year: 2002<br />ratio:         NA","year: 2003<br />ratio:         NA","year: 2004<br />ratio:         NA","year: 2005<br />ratio:         NA","year: 2006<br />ratio:         NA","year: 2007<br />ratio: 0.01851852","year: 2008<br />ratio: 0.02380952","year: 2009<br />ratio: 0.02631579","year: 2010<br />ratio: 0.02127660","year: 2011<br />ratio: 0.01639344","year: 2012<br />ratio: 0.02083333","year: 2013<br />ratio: 0.02000000","year: 2014<br />ratio: 0.01666667","year: 2015<br />ratio: 0.02702703","year: 2016<br />ratio: 0.02564103","year: 2017<br />ratio: 0.02439024","year: 2018<br />ratio: 0.02631579","year: 2019<br />ratio: 0.01785714","year: 2020<br />ratio: 0.02702703","year: 2021<br />ratio: 0.03030303","year: 2022<br />ratio: 0.03448276","year: 2023<br />ratio: 0.04000000","year: 2024<br />ratio: 0.03846154","year: 2025<br />ratio: 0.33333333"],"type":"scatter","mode":"lines","line":{"width":1.8897637795275593,"color":"rgba(0,0,0,1)","dash":"solid"},"hoveron":"points","showlegend":false,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null}],"layout":{"margin":{"t":43.762557077625573,"r":7.3059360730593621,"b":40.182648401826491,"l":43.105022831050235},"paper_bgcolor":"#ffffff","font":{"color":"rgba(51,51,51,1)","family":"","size":14.611872146118724},"title":{"text":"Ratio of missing abstract over all documents","font":{"color":"#333333","family":"","size":20},"x":0,"xref":"paper"},"xaxis":{"domain":[0,1],"automargin":true,"type":"linear","autorange":false,"range":[1984.05,2026.95],"tickmode":"array","ticktext":["1990","2000","2010","2020"],"tickvals":[1990,2000,2010,2020],"categoryorder":"array","categoryarray":["1990","2000","2010","2020"],"nticks":null,"ticks":"outside","tickcolor":"rgba(51,51,51,1)","ticklen":3.6529680365296811,"tickwidth":0.66417600664176002,"showticklabels":true,"tickfont":{"color":"#333333","family":"","size":14},"tickangle":-0,"showline":true,"linecolor":"rgba(51,51,51,1)","linewidth":0.66417600664176002,"showgrid":true,"gridcolor":"rgba(51,51,51,1)","gridwidth":0.66417600664176002,"zeroline":false,"anchor":"y","title":{"text":"Year","font":{"color":"rgba(51,51,51,1)","family":"","size":14.611872146118724}},"hoverformat":".2f","titlefont":{"color":"#333333","size":16}},"yaxis":{"domain":[0,1],"automargin":true,"type":"linear","autorange":false,"range":[-0.071676135369968599,0.35261949850968105],"tickmode":"array","ticktext":["0.0","0.1","0.2","0.3"],"tickvals":[0,0.10000000000000002,0.20000000000000007,0.30000000000000004],"categoryorder":"array","categoryarray":["0.0","0.1","0.2","0.3"],"nticks":null,"ticks":"outside","tickcolor":"rgba(51,51,51,1)","ticklen":3.6529680365296811,"tickwidth":0.66417600664176002,"showticklabels":true,"tickfont":{"color":"#333333","family":"","size":14},"tickangle":-0,"showline":true,"linecolor":"rgba(51,51,51,1)","linewidth":0.66417600664176002,"showgrid":true,"gridcolor":"rgba(51,51,51,1)","gridwidth":0.66417600664176002,"zeroline":false,"anchor":"x","title":{"text":"Ratio","font":{"color":"rgba(51,51,51,1)","family":"","size":14.611872146118724}},"hoverformat":".2f","titlefont":{"color":"#333333","size":16}},"shapes":[{"type":"rect","fillcolor":null,"line":{"color":null,"width":0,"linetype":[]},"yref":"paper","xref":"paper","x0":0,"x1":1,"y0":0,"y1":1}],"showlegend":false,"legend":{"bgcolor":null,"bordercolor":null,"borderwidth":0,"font":{"color":"rgba(51,51,51,1)","family":"","size":11.68949771689498}},"hovermode":"closest","barmode":"relative","plot_bgcolor":"#ffffff"},"config":{"doubleClick":"reset","modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"source":"A","attrs":{"19e4d3226a3":{"x":{},"y":{},"type":"scatter"},"19e4df0715c":{"x":{},"y":{}}},"cur_data":"19e4d3226a3","visdat":{"19e4d3226a3":["function (y) ","x"],"19e4df0715c":["function (y) ","x"]},"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+</div>
+<div class="dark-content">
+<div class="plotly html-widget html-fill-item" id="htmlwidget-5cecc3a0158521fe2a24" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-5cecc3a0158521fe2a24">{"x":{"data":[{"x":[2007,2007.2278481012659,2007.4556962025317,2007.6835443037974,2007.9113924050632,2008.1392405063291,2008.367088607595,2008.5949367088608,2008.8227848101267,2009.0506329113923,2009.2784810126582,2009.506329113924,2009.7341772151899,2009.9620253164558,2010.1898734177216,2010.4177215189873,2010.6455696202531,2010.873417721519,2011.1012658227849,2011.3291139240507,2011.5569620253164,2011.7848101265822,2012.0126582278481,2012.2405063291139,2012.4683544303798,2012.6962025316457,2012.9240506329113,2013.1518987341772,2013.379746835443,2013.6075949367089,2013.8354430379748,2014.0632911392406,2014.2911392405063,2014.5189873417721,2014.746835443038,2014.9746835443038,2015.2025316455697,2015.4303797468353,2015.6582278481012,2015.8860759493671,2016.1139240506329,2016.3417721518988,2016.5696202531647,2016.7974683544303,2017.0253164556962,2017.253164556962,2017.4810126582279,2017.7088607594937,2017.9367088607594,2018.1645569620252,2018.3924050632911,2018.620253164557,2018.8481012658228,2019.0759493670887,2019.3037974683543,2019.5316455696202,2019.7594936708861,2019.9873417721519,2020.2151898734178,2020.4430379746836,2020.6708860759493,2020.8987341772151,2021.126582278481,2021.3544303797469,2021.5822784810127,2021.8101265822784,2022.0379746835442,2022.2658227848101,2022.493670886076,2022.7215189873418,2022.9493670886077,2023.1772151898733,2023.4050632911392,2023.632911392405,2023.8607594936709,2024.0886075949368,2024.3164556962026,2024.5443037974683,2024.7721518987341,2025],"y":[0.022405497865496588,0.022203151379065093,0.022013000596679225,0.021832510482511756,0.021659146000734927,0.021491532695134905,0.02133319561562615,0.02118539399988351,0.021049003056605821,0.020924824994804261,0.020811616756874582,0.02070889332317238,0.020617011670511623,0.020536328775706297,0.020467201615570363,0.020409987166917849,0.020365042406562617,0.020332724311318707,0.020309710664766646,0.020271475851527311,0.020220651436553432,0.020166052828756598,0.020116495437048562,0.020080794670341025,0.020067765937545695,0.020086224647574275,0.020144986209338384,0.020289562802206045,0.020594822134452812,0.020965943933812254,0.021296805247219081,0.021492232205842003,0.021670872828605338,0.021887643968244261,0.022131732333079253,0.022392324631430968,0.022658607571620047,0.02291976786196688,0.023164992210792643,0.023383467326417707,0.023558177477882379,0.023654646579477957,0.023690491384468382,0.023691036845581603,0.023681607915545515,0.023687529547088051,0.023734126692937133,0.023846724305820681,0.024050647338466374,0.023952923006970942,0.02284102683045092,0.021448924127061557,0.020582496602451365,0.020875615974619174,0.02077502452666834,0.020014159066450828,0.01898374395663955,0.018074503559907765,0.017677162238928734,0.018182444356375727,0.019981074274919432,0.023463776357236388,0.028719048988455287,0.034544805025424084,0.040826518929567082,0.04763247445939775,0.055030955373450145,0.063090245430238279,0.071878628388282712,0.081464388006103949,0.091915808042222547,0.10324434118200929,0.11534900420106185,0.12821276901943496,0.14182257734658554,0.15616537089197055,0.17122809136504691,0.18699768047525539,0.20346107993208443,0.2206052314449756],"text":["year: 2007.000<br />ratio: 0.02240550","year: 2007.228<br />ratio: 0.02220315","year: 2007.456<br />ratio: 0.02201300","year: 2007.684<br />ratio: 0.02183251","year: 2007.911<br />ratio: 0.02165915","year: 2008.139<br />ratio: 0.02149153","year: 2008.367<br />ratio: 0.02133320","year: 2008.595<br />ratio: 0.02118539","year: 2008.823<br />ratio: 0.02104900","year: 2009.051<br />ratio: 0.02092482","year: 2009.278<br />ratio: 0.02081162","year: 2009.506<br />ratio: 0.02070889","year: 2009.734<br />ratio: 0.02061701","year: 2009.962<br />ratio: 0.02053633","year: 2010.190<br />ratio: 0.02046720","year: 2010.418<br />ratio: 0.02040999","year: 2010.646<br />ratio: 0.02036504","year: 2010.873<br />ratio: 0.02033272","year: 2011.101<br />ratio: 0.02030971","year: 2011.329<br />ratio: 0.02027148","year: 2011.557<br />ratio: 0.02022065","year: 2011.785<br />ratio: 0.02016605","year: 2012.013<br />ratio: 0.02011650","year: 2012.241<br />ratio: 0.02008079","year: 2012.468<br />ratio: 0.02006777","year: 2012.696<br />ratio: 0.02008622","year: 2012.924<br />ratio: 0.02014499","year: 2013.152<br />ratio: 0.02028956","year: 2013.380<br />ratio: 0.02059482","year: 2013.608<br />ratio: 0.02096594","year: 2013.835<br />ratio: 0.02129681","year: 2014.063<br />ratio: 0.02149223","year: 2014.291<br />ratio: 0.02167087","year: 2014.519<br />ratio: 0.02188764","year: 2014.747<br />ratio: 0.02213173","year: 2014.975<br />ratio: 0.02239232","year: 2015.203<br />ratio: 0.02265861","year: 2015.430<br />ratio: 0.02291977","year: 2015.658<br />ratio: 0.02316499","year: 2015.886<br />ratio: 0.02338347","year: 2016.114<br />ratio: 0.02355818","year: 2016.342<br />ratio: 0.02365465","year: 2016.570<br />ratio: 0.02369049","year: 2016.797<br />ratio: 0.02369104","year: 2017.025<br />ratio: 0.02368161","year: 2017.253<br />ratio: 0.02368753","year: 2017.481<br />ratio: 0.02373413","year: 2017.709<br />ratio: 0.02384672","year: 2017.937<br />ratio: 0.02405065","year: 2018.165<br />ratio: 0.02395292","year: 2018.392<br />ratio: 0.02284103","year: 2018.620<br />ratio: 0.02144892","year: 2018.848<br />ratio: 0.02058250","year: 2019.076<br />ratio: 0.02087562","year: 2019.304<br />ratio: 0.02077502","year: 2019.532<br />ratio: 0.02001416","year: 2019.759<br />ratio: 0.01898374","year: 2019.987<br />ratio: 0.01807450","year: 2020.215<br />ratio: 0.01767716","year: 2020.443<br />ratio: 0.01818244","year: 2020.671<br />ratio: 0.01998107","year: 2020.899<br />ratio: 0.02346378","year: 2021.127<br />ratio: 0.02871905","year: 2021.354<br />ratio: 0.03454481","year: 2021.582<br />ratio: 0.04082652","year: 2021.810<br />ratio: 0.04763247","year: 2022.038<br />ratio: 0.05503096","year: 2022.266<br />ratio: 0.06309025","year: 2022.494<br />ratio: 0.07187863","year: 2022.722<br />ratio: 0.08146439","year: 2022.949<br />ratio: 0.09191581","year: 2023.177<br />ratio: 0.10324434","year: 2023.405<br />ratio: 0.11534900","year: 2023.633<br />ratio: 0.12821277","year: 2023.861<br />ratio: 0.14182258","year: 2024.089<br />ratio: 0.15616537","year: 2024.316<br />ratio: 0.17122809","year: 2024.544<br />ratio: 0.18699768","year: 2024.772<br />ratio: 0.20346108","year: 2025.000<br />ratio: 0.22060523"],"type":"scatter","mode":"lines","name":"fitted values","line":{"width":3.7795275590551185,"color":"rgba(51,102,255,1)","dash":"solid"},"hoveron":"points","showlegend":false,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"x":[2007,2007.2278481012659,2007.4556962025317,2007.6835443037974,2007.9113924050632,2008.1392405063291,2008.367088607595,2008.5949367088608,2008.8227848101267,2009.0506329113923,2009.2784810126582,2009.506329113924,2009.7341772151899,2009.9620253164558,2010.1898734177216,2010.4177215189873,2010.6455696202531,2010.873417721519,2011.1012658227849,2011.3291139240507,2011.5569620253164,2011.7848101265822,2012.0126582278481,2012.2405063291139,2012.4683544303798,2012.6962025316457,2012.9240506329113,2013.1518987341772,2013.379746835443,2013.6075949367089,2013.8354430379748,2014.0632911392406,2014.2911392405063,2014.5189873417721,2014.746835443038,2014.9746835443038,2015.2025316455697,2015.4303797468353,2015.6582278481012,2015.8860759493671,2016.1139240506329,2016.3417721518988,2016.5696202531647,2016.7974683544303,2017.0253164556962,2017.253164556962,2017.4810126582279,2017.7088607594937,2017.9367088607594,2018.1645569620252,2018.3924050632911,2018.620253164557,2018.8481012658228,2019.0759493670887,2019.3037974683543,2019.5316455696202,2019.7594936708861,2019.9873417721519,2020.2151898734178,2020.4430379746836,2020.6708860759493,2020.8987341772151,2021.126582278481,2021.3544303797469,2021.5822784810127,2021.8101265822784,2022.0379746835442,2022.2658227848101,2022.493670886076,2022.7215189873418,2022.9493670886077,2023.1772151898733,2023.4050632911392,2023.632911392405,2023.8607594936709,2024.0886075949368,2024.3164556962026,2024.5443037974683,2024.7721518987341,2025,2025,2025,2024.7721518987341,2024.5443037974683,2024.3164556962026,2024.0886075949368,2023.8607594936709,2023.632911392405,2023.4050632911392,2023.1772151898733,2022.9493670886077,2022.7215189873418,2022.493670886076,2022.2658227848101,2022.0379746835442,2021.8101265822784,2021.5822784810127,2021.3544303797469,2021.126582278481,2020.8987341772151,2020.6708860759493,2020.4430379746836,2020.2151898734178,2019.9873417721519,2019.7594936708861,2019.5316455696202,2019.3037974683543,2019.0759493670887,2018.8481012658228,2018.620253164557,2018.3924050632911,2018.1645569620252,2017.9367088607594,2017.7088607594937,2017.4810126582279,2017.253164556962,2017.0253164556962,2016.7974683544303,2016.5696202531647,2016.3417721518988,2016.1139240506329,2015.8860759493671,2015.6582278481012,2015.4303797468353,2015.2025316455697,2014.9746835443038,2014.746835443038,2014.5189873417721,2014.2911392405063,2014.0632911392406,2013.8354430379748,2013.6075949367089,2013.379746835443,2013.1518987341772,2012.9240506329113,2012.6962025316457,2012.4683544303798,2012.2405063291139,2012.0126582278481,2011.7848101265822,2011.5569620253164,2011.3291139240507,2011.1012658227849,2010.873417721519,2010.6455696202531,2010.4177215189873,2010.1898734177216,2009.9620253164558,2009.7341772151899,2009.506329113924,2009.2784810126582,2009.0506329113923,2008.8227848101267,2008.5949367088608,2008.367088607595,2008.1392405063291,2007.9113924050632,2007.6835443037974,2007.4556962025317,2007.2278481012659,2007,2007],"y":[-0.052389970193620891,-0.046415471493751609,-0.040961910799503204,-0.036084759041987741,-0.031821037839627045,-0.028180756054663126,-0.025154546318513302,-0.022741661188523981,-0.020927399090266766,-0.019677008679467436,-0.018912296710081107,-0.018545627365624141,-0.018498754790499027,-0.018699125314209433,-0.019081768345309738,-0.019589999603975578,-0.020175291277189929,-0.020796743344470969,-0.021403438020032819,-0.021864414055795797,-0.022217548175561513,-0.022543305203539029,-0.022901407308790575,-0.023308520589733907,-0.023728706087846239,-0.024076831142089496,-0.02423322689970353,-0.023978749629955939,-0.023344017882352974,-0.022960729445308043,-0.022953035878631518,-0.022878973063195335,-0.02230224209913638,-0.021442960952103456,-0.020628695492761986,-0.020113477500199053,-0.0200117674348744,-0.020267639882668512,-0.020674830689003436,-0.020937150622318292,-0.02076244047085362,-0.020185176320318115,-0.01949691636016701,-0.018979338160912851,-0.018824194216084514,-0.019072898278753195,-0.019596478227410591,-0.020126390621921057,-0.020320557930570977,-0.020296918118879678,-0.021085646548669384,-0.022489915889744236,-0.023685815829710626,-0.023502597134422747,-0.023388031262995431,-0.0237823129589411,-0.024405571303435375,-0.024943399185931345,-0.025032195793366872,-0.024255755255739177,-0.022154815632403648,-0.018249372327563029,-0.012410418667334347,-0.0059955286583284195,0.00082653215867369012,0.0080835044985176768,0.015795501283534442,0.02397447896922765,0.032624107699486204,0.04174047453914826,0.051313974367950856,0.061270758100556849,0.071430017078719502,0.081730571035888683,0.092139442296794938,0.10264449875258547,0.11324903397226899,0.12396584426405431,0.13481221093161744,0.14580634133350434,0.14580634133350434,0.29540412155644685,0.27210994893255142,0.25002951668645645,0.22920714875782483,0.20968624303135563,0.19150571239637615,0.17469496700298123,0.15926799132340419,0.14521792426346172,0.13251764171649424,0.12118830147305965,0.11113314907707922,0.10220601189124891,0.094266409463365841,0.087181444420277823,0.080826505700460474,0.075085138709176588,0.069848516644244921,0.065176925042035802,0.062116964182242509,0.06062064396849063,0.060386520271224341,0.061092406305746874,0.062373059216714474,0.063810631091842762,0.064938080316332109,0.065253829083661091,0.064850809034613349,0.06538776414386735,0.066767700209571221,0.068202764132821558,0.068421852607503719,0.067819839233562412,0.067064731613284856,0.0664479573729293,0.066187410047175543,0.066361411852076058,0.066877899129103774,0.067494469479274025,0.067878795426618371,0.067704085275153703,0.067004815110588728,0.066107175606602273,0.065328982578114494,0.06489812676306099,0.064892160158920492,0.065218248888591984,0.065643987756347055,0.065863437474879341,0.065546646373069672,0.064892617312932555,0.064533662151258595,0.064557875234368026,0.064523199318380298,0.064249280437238043,0.063864237962937637,0.063470109930415963,0.063134398182887699,0.062875410861052222,0.062658851048668376,0.062407365758850419,0.062022859349566112,0.061462191967108379,0.060905376090315162,0.060409973937811279,0.060016171576450464,0.059771782865622028,0.059732778131522273,0.059963414011968905,0.060535530223830271,0.061526658669075959,0.063025405203478407,0.065112449188290997,0.067820937549765606,0.07116382144493294,0.075139329841096891,0.079749780007011245,0.084987911992861653,0.090821774251881787,0.097200965924614066,-0.052389970193620891],"text":["year: 2007.000<br />ratio: 0.02240550","year: 2007.228<br />ratio: 0.02220315","year: 2007.456<br />ratio: 0.02201300","year: 2007.684<br />ratio: 0.02183251","year: 2007.911<br />ratio: 0.02165915","year: 2008.139<br />ratio: 0.02149153","year: 2008.367<br />ratio: 0.02133320","year: 2008.595<br />ratio: 0.02118539","year: 2008.823<br />ratio: 0.02104900","year: 2009.051<br />ratio: 0.02092482","year: 2009.278<br />ratio: 0.02081162","year: 2009.506<br />ratio: 0.02070889","year: 2009.734<br />ratio: 0.02061701","year: 2009.962<br />ratio: 0.02053633","year: 2010.190<br />ratio: 0.02046720","year: 2010.418<br />ratio: 0.02040999","year: 2010.646<br />ratio: 0.02036504","year: 2010.873<br />ratio: 0.02033272","year: 2011.101<br />ratio: 0.02030971","year: 2011.329<br />ratio: 0.02027148","year: 2011.557<br />ratio: 0.02022065","year: 2011.785<br />ratio: 0.02016605","year: 2012.013<br />ratio: 0.02011650","year: 2012.241<br />ratio: 0.02008079","year: 2012.468<br />ratio: 0.02006777","year: 2012.696<br />ratio: 0.02008622","year: 2012.924<br />ratio: 0.02014499","year: 2013.152<br />ratio: 0.02028956","year: 2013.380<br />ratio: 0.02059482","year: 2013.608<br />ratio: 0.02096594","year: 2013.835<br />ratio: 0.02129681","year: 2014.063<br />ratio: 0.02149223","year: 2014.291<br />ratio: 0.02167087","year: 2014.519<br />ratio: 0.02188764","year: 2014.747<br />ratio: 0.02213173","year: 2014.975<br />ratio: 0.02239232","year: 2015.203<br />ratio: 0.02265861","year: 2015.430<br />ratio: 0.02291977","year: 2015.658<br />ratio: 0.02316499","year: 2015.886<br />ratio: 0.02338347","year: 2016.114<br />ratio: 0.02355818","year: 2016.342<br />ratio: 0.02365465","year: 2016.570<br />ratio: 0.02369049","year: 2016.797<br />ratio: 0.02369104","year: 2017.025<br />ratio: 0.02368161","year: 2017.253<br />ratio: 0.02368753","year: 2017.481<br />ratio: 0.02373413","year: 2017.709<br />ratio: 0.02384672","year: 2017.937<br />ratio: 0.02405065","year: 2018.165<br />ratio: 0.02395292","year: 2018.392<br />ratio: 0.02284103","year: 2018.620<br />ratio: 0.02144892","year: 2018.848<br />ratio: 0.02058250","year: 2019.076<br />ratio: 0.02087562","year: 2019.304<br />ratio: 0.02077502","year: 2019.532<br />ratio: 0.02001416","year: 2019.759<br />ratio: 0.01898374","year: 2019.987<br />ratio: 0.01807450","year: 2020.215<br />ratio: 0.01767716","year: 2020.443<br />ratio: 0.01818244","year: 2020.671<br />ratio: 0.01998107","year: 2020.899<br />ratio: 0.02346378","year: 2021.127<br />ratio: 0.02871905","year: 2021.354<br />ratio: 0.03454481","year: 2021.582<br />ratio: 0.04082652","year: 2021.810<br />ratio: 0.04763247","year: 2022.038<br />ratio: 0.05503096","year: 2022.266<br />ratio: 0.06309025","year: 2022.494<br />ratio: 0.07187863","year: 2022.722<br />ratio: 0.08146439","year: 2022.949<br />ratio: 0.09191581","year: 2023.177<br />ratio: 0.10324434","year: 2023.405<br />ratio: 0.11534900","year: 2023.633<br />ratio: 0.12821277","year: 2023.861<br />ratio: 0.14182258","year: 2024.089<br />ratio: 0.15616537","year: 2024.316<br />ratio: 0.17122809","year: 2024.544<br />ratio: 0.18699768","year: 2024.772<br />ratio: 0.20346108","year: 2025.000<br />ratio: 0.22060523","year: 2025.000<br />ratio: 0.22060523","year: 2025.000<br />ratio: 0.22060523","year: 2024.772<br />ratio: 0.20346108","year: 2024.544<br />ratio: 0.18699768","year: 2024.316<br />ratio: 0.17122809","year: 2024.089<br />ratio: 0.15616537","year: 2023.861<br />ratio: 0.14182258","year: 2023.633<br />ratio: 0.12821277","year: 2023.405<br />ratio: 0.11534900","year: 2023.177<br />ratio: 0.10324434","year: 2022.949<br />ratio: 0.09191581","year: 2022.722<br />ratio: 0.08146439","year: 2022.494<br />ratio: 0.07187863","year: 2022.266<br />ratio: 0.06309025","year: 2022.038<br />ratio: 0.05503096","year: 2021.810<br />ratio: 0.04763247","year: 2021.582<br />ratio: 0.04082652","year: 2021.354<br />ratio: 0.03454481","year: 2021.127<br />ratio: 0.02871905","year: 2020.899<br />ratio: 0.02346378","year: 2020.671<br />ratio: 0.01998107","year: 2020.443<br />ratio: 0.01818244","year: 2020.215<br />ratio: 0.01767716","year: 2019.987<br />ratio: 0.01807450","year: 2019.759<br />ratio: 0.01898374","year: 2019.532<br />ratio: 0.02001416","year: 2019.304<br />ratio: 0.02077502","year: 2019.076<br />ratio: 0.02087562","year: 2018.848<br />ratio: 0.02058250","year: 2018.620<br />ratio: 0.02144892","year: 2018.392<br />ratio: 0.02284103","year: 2018.165<br />ratio: 0.02395292","year: 2017.937<br />ratio: 0.02405065","year: 2017.709<br />ratio: 0.02384672","year: 2017.481<br />ratio: 0.02373413","year: 2017.253<br />ratio: 0.02368753","year: 2017.025<br />ratio: 0.02368161","year: 2016.797<br />ratio: 0.02369104","year: 2016.570<br />ratio: 0.02369049","year: 2016.342<br />ratio: 0.02365465","year: 2016.114<br />ratio: 0.02355818","year: 2015.886<br />ratio: 0.02338347","year: 2015.658<br />ratio: 0.02316499","year: 2015.430<br />ratio: 0.02291977","year: 2015.203<br />ratio: 0.02265861","year: 2014.975<br />ratio: 0.02239232","year: 2014.747<br />ratio: 0.02213173","year: 2014.519<br />ratio: 0.02188764","year: 2014.291<br />ratio: 0.02167087","year: 2014.063<br />ratio: 0.02149223","year: 2013.835<br />ratio: 0.02129681","year: 2013.608<br />ratio: 0.02096594","year: 2013.380<br />ratio: 0.02059482","year: 2013.152<br />ratio: 0.02028956","year: 2012.924<br />ratio: 0.02014499","year: 2012.696<br />ratio: 0.02008622","year: 2012.468<br />ratio: 0.02006777","year: 2012.241<br />ratio: 0.02008079","year: 2012.013<br />ratio: 0.02011650","year: 2011.785<br />ratio: 0.02016605","year: 2011.557<br />ratio: 0.02022065","year: 2011.329<br />ratio: 0.02027148","year: 2011.101<br />ratio: 0.02030971","year: 2010.873<br />ratio: 0.02033272","year: 2010.646<br />ratio: 0.02036504","year: 2010.418<br />ratio: 0.02040999","year: 2010.190<br />ratio: 0.02046720","year: 2009.962<br />ratio: 0.02053633","year: 2009.734<br />ratio: 0.02061701","year: 2009.506<br />ratio: 0.02070889","year: 2009.278<br />ratio: 0.02081162","year: 2009.051<br />ratio: 0.02092482","year: 2008.823<br />ratio: 0.02104900","year: 2008.595<br />ratio: 0.02118539","year: 2008.367<br />ratio: 0.02133320","year: 2008.139<br />ratio: 0.02149153","year: 2007.911<br />ratio: 0.02165915","year: 2007.684<br />ratio: 0.02183251","year: 2007.456<br />ratio: 0.02201300","year: 2007.228<br />ratio: 0.02220315","year: 2007.000<br />ratio: 0.02240550","year: 2007.000<br />ratio: 0.02240550"],"type":"scatter","mode":"lines","line":{"width":3.7795275590551185,"color":"transparent","dash":"solid"},"fill":"toself","fillcolor":"rgba(153,153,153,0.4)","hoveron":"points","hoverinfo":"x+y","showlegend":false,"xaxis":"x","yaxis":"y","frame":null},{"x":[1986,1987,1988,1989,1990,1991,1992,1993,1994,1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025],"y":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,0.018518518518518517,0.023809523809523808,0.026315789473684209,0.021276595744680851,0.016393442622950821,0.020833333333333332,0.02,0.016666666666666666,0.027027027027027029,0.02564102564102564,0.024390243902439025,0.026315789473684209,0.017857142857142856,0.027027027027027029,0.030303030303030304,0.034482758620689655,0.040000000000000001,0.038461538461538464,0.33333333333333331],"text":["year: 1986<br />ratio:         NA","year: 1987<br />ratio:         NA","year: 1988<br />ratio:         NA","year: 1989<br />ratio:         NA","year: 1990<br />ratio:         NA","year: 1991<br />ratio:         NA","year: 1992<br />ratio:         NA","year: 1993<br />ratio:         NA","year: 1994<br />ratio:         NA","year: 1995<br />ratio:         NA","year: 1996<br />ratio:         NA","year: 1997<br />ratio:         NA","year: 1998<br />ratio:         NA","year: 1999<br />ratio:         NA","year: 2000<br />ratio:         NA","year: 2001<br />ratio:         NA","year: 2002<br />ratio:         NA","year: 2003<br />ratio:         NA","year: 2004<br />ratio:         NA","year: 2005<br />ratio:         NA","year: 2006<br />ratio:         NA","year: 2007<br />ratio: 0.01851852","year: 2008<br />ratio: 0.02380952","year: 2009<br />ratio: 0.02631579","year: 2010<br />ratio: 0.02127660","year: 2011<br />ratio: 0.01639344","year: 2012<br />ratio: 0.02083333","year: 2013<br />ratio: 0.02000000","year: 2014<br />ratio: 0.01666667","year: 2015<br />ratio: 0.02702703","year: 2016<br />ratio: 0.02564103","year: 2017<br />ratio: 0.02439024","year: 2018<br />ratio: 0.02631579","year: 2019<br />ratio: 0.01785714","year: 2020<br />ratio: 0.02702703","year: 2021<br />ratio: 0.03030303","year: 2022<br />ratio: 0.03448276","year: 2023<br />ratio: 0.04000000","year: 2024<br />ratio: 0.03846154","year: 2025<br />ratio: 0.33333333"],"type":"scatter","mode":"lines","line":{"width":1.8897637795275593,"color":"rgba(0,0,0,1)","dash":"solid"},"hoveron":"points","showlegend":false,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null}],"layout":{"margin":{"t":43.762557077625573,"r":7.3059360730593621,"b":40.182648401826491,"l":43.105022831050235},"paper_bgcolor":"#282B30","font":{"color":"rgba(170,170,170,1)","family":"","size":14.611872146118724},"title":{"text":"Ratio of missing abstract over all documents","font":{"color":"#aaaaaa","family":"","size":20},"x":0,"xref":"paper"},"xaxis":{"domain":[0,1],"automargin":true,"type":"linear","autorange":false,"range":[1984.05,2026.95],"tickmode":"array","ticktext":["1990","2000","2010","2020"],"tickvals":[1990,2000,2010,2020],"categoryorder":"array","categoryarray":["1990","2000","2010","2020"],"nticks":null,"ticks":"outside","tickcolor":"rgba(170,170,170,1)","ticklen":3.6529680365296811,"tickwidth":0.66417600664176002,"showticklabels":true,"tickfont":{"color":"#aaaaaa","family":"","size":14},"tickangle":-0,"showline":true,"linecolor":"rgba(170,170,170,1)","linewidth":0.66417600664176002,"showgrid":true,"gridcolor":"rgba(170,170,170,1)","gridwidth":0.66417600664176002,"zeroline":false,"anchor":"y","title":{"text":"Year","font":{"color":"rgba(170,170,170,1)","family":"","size":14.611872146118724}},"hoverformat":".2f","titlefont":{"color":"#aaaaaa","size":16}},"yaxis":{"domain":[0,1],"automargin":true,"type":"linear","autorange":false,"range":[-0.071676135369968599,0.35261949850968105],"tickmode":"array","ticktext":["0.0","0.1","0.2","0.3"],"tickvals":[0,0.10000000000000002,0.20000000000000007,0.30000000000000004],"categoryorder":"array","categoryarray":["0.0","0.1","0.2","0.3"],"nticks":null,"ticks":"outside","tickcolor":"rgba(170,170,170,1)","ticklen":3.6529680365296811,"tickwidth":0.66417600664176002,"showticklabels":true,"tickfont":{"color":"#aaaaaa","family":"","size":14},"tickangle":-0,"showline":true,"linecolor":"rgba(170,170,170,1)","linewidth":0.66417600664176002,"showgrid":true,"gridcolor":"rgba(170,170,170,1)","gridwidth":0.66417600664176002,"zeroline":false,"anchor":"x","title":{"text":"Ratio","font":{"color":"rgba(170,170,170,1)","family":"","size":14.611872146118724}},"hoverformat":".2f","titlefont":{"color":"#aaaaaa","size":16}},"shapes":[{"type":"rect","fillcolor":null,"line":{"color":null,"width":0,"linetype":[]},"yref":"paper","xref":"paper","x0":0,"x1":1,"y0":0,"y1":1}],"showlegend":false,"legend":{"bgcolor":null,"bordercolor":null,"borderwidth":0,"font":{"color":"rgba(170,170,170,1)","family":"","size":11.68949771689498}},"hovermode":"closest","barmode":"relative","plot_bgcolor":"#282B30"},"config":{"doubleClick":"reset","modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"source":"A","attrs":{"19e4a311c70":{"x":{},"y":{},"type":"scatter"},"19e466ed34f6":{"x":{},"y":{}}},"cur_data":"19e4a311c70","visdat":{"19e4a311c70":["function (y) ","x"],"19e466ed34f6":["function (y) ","x"]},"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+<section id="ratio-of-missing-abstract-over-all-documents" class="level3">
+<h3 class="anchored" data-anchor-id="ratio-of-missing-abstract-over-all-documents">Ratio of missing abstract over all documents</h3>
+<div id="fig-plotly" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-plotly-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig quarto-uncaptioned" id="fig-plotly-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2
+</figcaption>
+</figure>
+</div>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
