@@ -1,0 +1,360 @@
+---
+title: "Fetching data"
+author: "Jacob Hamel-Mottiez"
+date: "`r Sys.Date()`"
+output: html_document
+---
+This file document how we fetched the data for Web of Science and Scopus via SQL query for the first and via API through RStudio for the second. 
+
+
+# Web of Science B&P 
+## DATA STRUCTURE 
+We are working with Web of Science (clarivate) database via Albator. The
+access is provided by Vincent Larivière.
+
+All the information linking cited and citing documents is established via a key called "OST_BK" which is an unique identifier. 
+
+There are two ways ways in which you can deal with the data. 
+  1) Take the .dbo tables which are from WoS ;  
+  2) Take the .pex tables which are from OST. 
+
+What should influence your choice is the following methodological considerations : 
+The table that links the cited documents with the citing documents is constructed as follow :   
+  1) The cited document must be present in the WOS (Web of Science) corpus.
+  2) The cited document must be an article, a note, or a review (with a `code_document` less than 4).
+  3) The documents citing or cited must have been published between 1900 and the present day.
+  4) The documents citing or cited must have at least one author listed in the `summary_name` table.
+
+In short, if you want all the documents cited for a given citing journal, take .dbo. If you only want the scientific articles, then take .pex because it is cleaner. 
+
+
+## COMPLETNESS OF THE DATA
+When looking at B&P (Code_Revue = 2229), we were able to fetch a total of 67 774 cited documents. 
+When we looked at which got a Cited_Title, it dropped to 43 828.
+When we looked at which had a Cited_Title and an OST_BK, it dropped to 36 335 (~ 31 436 lost in total).
+
+```{sql SCRIPT, eval=FALSE}
+/****** Fetching relevant corpora
+Project: Biology in philosophy
+created by Jacob Hamel-Mottiez and Louis Renaud-Desjarding on 2024-09-23. 
+Database : Web of Science
+
+// SETUP //
+We run many tests on Albator SQL Server. The cleanest data output is when you execute 
+the query, right-click on the result and save it as a .csv file. 
+
+You can easily save on onedrive and fetch the data elsewhere
+
+// DATA STRUCTURE //
+We are working with Web of Science (clarivate) database via Albator. The
+access is provided by Vincent Lariviere.
+
+All the information linking cited and citing documents is established via a key called "OST_BK" which is an unique identifier. 
+
+There are two ways ways in which you can deal with the data. 
+  1) Take the .dbo tables which are from WoS ;  
+  2) Take the .pex tables which are from OST. 
+
+What should influence your choice is the following methodological considerations : 
+The table that links the cited documents with the citing documents is constructed as follow :   
+  1) The cited document must be present in the WOS (Web of Science) corpus.
+  2) The cited document must be an article, a note, or a review (with a `code_document` less than 4).
+  3) The documents citing or cited must have been published between 1900 and the present day.
+  4) The documents citing or cited must have at least one author listed in the `summary_name` table.
+
+In short, if you want all the documents cited for a given citing journal, take .dbo. If you only want the scientific articles, then take .pex because it is cleaner. 
+
+
+// COMPLETNESS OF THE DATA //
+When looking at B&P (Code_Revue = 2229), we were able to fetch a total of 67 774 cited documents. 
+When we looked at which got a Cited_Title, it dropped to 43 828.
+When we looked at which had a Cited_Title and an OST_BK, it dropped to 36 335 (~ 31 436 lost in total).  
+
+
+******/
+
+-- alternative table (to verify with Louis) 
+-- The idea was to select only relevant column in art. and to add Etype doc. 
+SELECT art.OST_BK
+  , art.Annee_Bibliographique as citing_year
+  , art.UID
+  , art.Titre
+  , art.Nb_Reference
+  , doc.EType_Document as Type_Document
+  , rev.Revue
+  , rev.Abbrev_11 as Abrev
+  , abst.Abstract as Abstract
+ FROM [WoS].[pex].[Article] as art
+  LEFT JOIN [WoS].[pex].[Liste_revue] as rev 
+  on art.Code_Revue = rev.Code_Revue
+  LEFT JOIN [WoS].[dbo].[Abstract] as abst
+  on art.OST_BK = abst.OST_BK
+  LEFT JOIN [WoS].[pex].[Liste_Document] as doc
+  on art.Code_Document = doc.Code_Document
+  WHERE art.Code_Revue = 2229
+
+-- Citing documents (articles published in B&P)
+SELECT art.*
+  ,Revue
+  ,Abbrev_11
+  ,abst.Abstract
+  FROM [WoS].[pex].[Article] as art
+  LEFT JOIN [WoS].[pex].[Liste_revue] as rev
+  on art.Code_Revue = rev.Code_Revue
+  LEFT JOIN [WoS].[dbo].[Abstract] as abst
+  on art.OST_BK = abst.OST_BK
+  WHERE art.Code_Revue = 2229
+
+-- Author citing (the authors' of citing documents)
+SELECT art.OST_BK
+	, aut.First_Name
+	, aut.Last_Name
+	, aut.Seq_No
+  FROM [WoS].[pex].[Article] as art
+  LEFT JOIN [WoS].[dbo].[Summary_Name] as aut
+  on art.OST_BK = aut.OST_BK
+  WHERE art.Code_Revue = 2229
+
+-- Cited documents (references of citing documents)
+SELECT ref.[OST_BK]
+      ,ref.[UID]
+	  ,id.[OST_BK] as OST_BK_Ref
+      ,ref.[UID_Ref]
+      ,ref.[Cited_Author]
+      ,ref.[Year]
+      ,ref.[Cited_Title]
+      ,ref.[Cited_Work]
+  FROM [WoS].[dbo].[Reference] as ref
+  LEFT JOIN [WoS].[pex].[Article] as art
+  ON ref.OST_BK = art.OST_BK
+  LEFT JOIN [WoS].[dbo].[Dictionnaire_ID] as id
+  ON ref.UID_Ref = id.UID
+  WHERE art.Code_Revue = 2229 
+  
+  
+--  AND ref.[Cited_Work] IS NOT NULL
+--  #67 752
+
+--	AND id.[OST_BK] IS NOT NULL 
+--  # 43 828 out of 67 774.
+
+--	AND ref.[Cited_Title] IS NOT NULL 
+--  # 36 335  out of 67 774.
+
+/* MEANING OF THE COMMENTED CONDITIONS
+Those two conditions enable us to look at how many references 
+don't have an OST_BK (and thus no information about cited documents) 
+and which cited documents had no title. 
+*/
+
+-- Cited abstract (references' abstract)
+SELECT DISTINCT id.[OST_BK] as OST_BK_Ref
+      ,ref.[UID_Ref]
+	    ,abst.Abstract
+  FROM [WoS].[dbo].[Reference] as ref
+  LEFT JOIN [WoS].[pex].[Article] as art
+  ON ref.OST_BK = art.OST_BK
+  LEFT JOIN [WoS].[dbo].[Dictionnaire_ID] as id
+  ON ref.UID_Ref = id.UID
+  LEFT JOIN [WoS].[dbo].[Abstract] as abst
+  on id.OST_BK = abst.OST_BK
+  WHERE art.Code_Revue = 2229
+	AND abst.Abstract IS NOT NULL 
+
+-- alt. cited abstract (references' abstract) (with keywords and Keywords plus)
+SELECT DISTINCT id.[OST_BK] as OST_BK_Ref
+      ,ref.[UID_Ref]
+	    ,abst.[Abstract]
+		,keyw.[Keyword] 
+		,keywP.[Keyword] as KeywordP
+  FROM [WoS].[dbo].[Reference] as ref
+  LEFT JOIN [WoS].[pex].[Article] as art
+  ON ref.OST_BK = art.OST_BK
+  LEFT JOIN [WoS].[dbo].[Dictionnaire_ID] as id
+  ON ref.UID_Ref = id.UID
+  LEFT JOIN [WoS].[dbo].[Abstract] as abst
+  on id.OST_BK = abst.OST_BK
+  LEFT JOIN [WoS].[dbo].[Keyword] as keyw
+  on id.OST_BK = keyw.OST_BK
+  LEFT JOIN [WoS].[dbo].[Keyword_Plus] as keywP
+  on id.OST_BK = keywP.OST_BK
+  WHERE art.Code_Revue = 2229
+	AND abst.Abstract IS NOT NULL 
+  
+-- Cited authors (references' authors)
+SELECT DISTINCT id.[OST_BK] as OST_BK_Ref
+      ,ref.[UID_Ref]
+	  ,aut.First_Name
+	  ,aut.Last_Name
+	  ,aut.Seq_No
+  FROM [WoS].[dbo].[Reference] as ref
+  LEFT JOIN [WoS].[pex].[Article] as art
+  ON ref.OST_BK = art.OST_BK
+  LEFT JOIN [WoS].[dbo].[Dictionnaire_ID] as id
+  ON ref.UID_Ref = id.UID
+  LEFT JOIN [WoS].[dbo].[Summary_Name] as aut
+  on id.OST_BK = aut.OST_BK
+  WHERE art.Code_Revue = 2229
+	AND aut.Seq_No IS NOT NULL
+
+-- The addresses of citing documents
+SELECT contrib.*
+  FROM [WoS].[dbo].Address as contrib
+  LEFT JOIN [WoS].[pex].[Article] as art
+  ON contrib.OST_BK = art.OST_BK
+  WHERE art.Code_Revue = 2229
+
+-- The organizations of citing documents
+SELECT contrib.*
+  FROM [WoS].[dbo].Address_Organization as contrib
+  LEFT JOIN [WoS].[pex].[Article] as art
+  ON contrib.OST_BK = art.OST_BK
+  WHERE art.Code_Revue = 2229
+```
+
+
+## Scopus B&P
+Now, we turn to Scopus. We must thank Aurélien Goutsmedt which made us aware of an API given by Scopus. It eased out our work substantially (for more information, see his blog [here](https://aurelien-goutsmedt.com/post/extracting-biblio-data-1/)).
+
+```{r, eval = FALSE}
+# API -----------------------------------------------------------
+api_key <- "db914ab9d5f084e447fa55aa8c441393"
+set_api_key(api_key)
+
+insttoken <- "d7e05f3ac9d63a6d51b9170681078e96"
+insttoken <- inst_token_header(insttoken)
+
+```
+
+
+```{r, eval=FALSE}
+# BIOLOGY & PHILOSOPHY
+bio_philo_query <- rscopus::scopus_search("EXACTSRCTITLE(Biology and Philosophy)", 
+                                     view = "COMPLETE",
+                                     headers = insttoken)
+
+bio_philo_raw <- gen_entries_to_df(bio_philo_query$entries)
+```
+
+```{r, eval=FALSE}
+# DIVISION OF INFORMATION INTO DIFFERENT TABLES.  ------------------------
+bio_philo_papers <- bio_philo_raw$df |> clean_names()# Papers
+bio_philo_affiliations <- bio_philo_raw$affiliation |> clean_names()# Affiliations
+bio_philo_authors <- bio_philo_raw$author |> clean_names()# Authors
+
+write_csv(bio_philo_papers, paste0(dir_od, "bio_philo_papers.csv"))
+write_csv(bio_philo_affiliations, paste0(dir_od, "bio_philo_affiliations.csv"))
+write_csv(bio_philo_authors, paste0(dir_od, "bio_philo_authors.csv"))
+
+```
+
+```{r, eval=FALSE}
+## This chunk of code below is to catch all the references. When there is more than 40 references in an article, Scopus API is not able to get them all. Hence we need a loop to collect them all. 
+citing_articles <- bio_philo_papers$dc_identifier # extracting the IDs of our articles
+citation_list <- list()
+
+# Loop to collect all the references.
+for(i in 1:length(citing_articles)){
+  citations_query <- abstract_retrieval(citing_articles[i],
+                                        identifier = "scopus_id",
+                                        view = "REF",
+                                        headers = insttoken)
+  if(!is.null(citations_query$content$`abstracts-retrieval-response`)){ # Checking if the article has some references before collecting them
+
+    nb_ref <- as.numeric(citations_query$content$`abstracts-retrieval-response`$references$`@total-references`)
+    citations <- gen_entries_to_df(citations_query$content$`abstracts-retrieval-response`$references$reference)$df
+
+    if(nb_ref > 40){ # The loop to collect all the references
+      nb_query_left_to_do <- floor((nb_ref) / 40)
+      cat("Number of requests left to do :", nb_query_left_to_do, "\n")
+      for (j in 1:nb_query_left_to_do){
+        cat("Request n°", j , "\n")
+        citations_query <- abstract_retrieval(citing_articles[i],
+                                              identifier = "scopus_id",
+                                              view = "REF",
+                                              startref = 40*j+1,
+                                              headers = insttoken)
+        citations_sup <- gen_entries_to_df(citations_query$content$`abstracts-retrieval-response`$references$reference)$df
+        citations <- bind_rows(citations, citations_sup)
+      }
+    }
+
+    citations <- citations |>
+      as_tibble(.name_repair = "unique") |>
+      select_if(~!all(is.na(.)))
+
+    citation_list[[citing_articles[i]]] <- citations
+  }
+}
+
+
+bio_philo_references <- bind_rows(citation_list, .id = "citing_art") # References
+write_csv(bio_philo_references, paste0(dir_od, "bio_philo_references.csv"))
+
+```
+
+```{r API QUERY, eval=FALSE}
+# BIOLOGICAL THEORY QUERY
+bio_th_query <- rscopus::scopus_search("EXACTSRCTITLE(\"Biological Theory\"", 
+                                     view = "COMPLETE",
+                                     headers = insttoken)
+
+bio_th_raw <- gen_entries_to_df(bio_th_query$entries)
+```
+
+```{r, eval=FALSE}
+# DIVISION OF INFORMATION INTO DIFFERENT TABLES
+bio_th_papers <- bio_th_raw$df |> clean_names() # Papers
+bio_th_affiliations <- bio_th_raw$affiliation |> clean_names() # Affiliations
+bio_th_authors <- bio_th_raw$author |> clean_names() # Authors
+
+write_csv(bio_th_papers, paste0(dir_od, "bio_th_papers.csv"))
+write_csv(bio_th_affiliations, paste0(dir_od, "bio_th_affiliations.csv"))
+write_csv(bio_th_authors, paste0(dir_od, "bio_th_authors.csv"))
+
+```
+
+```{r, eval=FALSE}
+## This chunk of code below is to catch all the references. When there is more than 40 references in an article, Scopus API is not able to get them all. Hence we need a loop to collect them all. 
+
+citing_articles <- bio_th_papers$dc_identifier # extracting the IDs of our articles
+citation_list <- list()
+
+# Loop to collect all the references.
+for(i in 1:length(citing_articles)){
+  citations_query <- abstract_retrieval(citing_articles[i],
+                                        identifier = "scopus_id",
+                                        view = "REF",
+                                        headers = insttoken)
+  if(!is.null(citations_query$content$`abstracts-retrieval-response`)){ # Checking if the article has some references before collecting them
+
+    nb_ref <- as.numeric(citations_query$content$`abstracts-retrieval-response`$references$`@total-references`)
+    citations <- gen_entries_to_df(citations_query$content$`abstracts-retrieval-response`$references$reference)$df
+
+    if(nb_ref > 40){ # The loop to collect all the references
+      nb_query_left_to_do <- floor((nb_ref) / 40)
+      cat("Number of requests left to do :", nb_query_left_to_do, "\n")
+      for (j in 1:nb_query_left_to_do){
+        cat("Request n°", j , "\n")
+        citations_query <- abstract_retrieval(citing_articles[i],
+                                              identifier = "scopus_id",
+                                              view = "REF",
+                                              startref = 40*j+1,
+                                              headers = insttoken)
+        citations_sup <- gen_entries_to_df(citations_query$content$`abstracts-retrieval-response`$references$reference)$df
+        citations <- bind_rows(citations, citations_sup)
+      }
+    }
+
+    citations <- citations |>
+      as_tibble(.name_repair = "unique") |>
+      select_if(~!all(is.na(.)))
+
+    citation_list[[citing_articles[i]]] <- citations
+  }
+}
+
+bio_th_references <- bind_rows(citation_list, .id = "citing_art") # References
+write_csv(bio_th_references, paste0(dir_od, "bio_th_references.csv"))
+
+```
