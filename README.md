@@ -1,3 +1,5 @@
+![[Visualisation/map_philo_bio_update.png]]
+
 This Github repo is to keep track of the computational work I did during my master thesis. In it, I looked at the estrangement between philosophy of biology and biology. 
 Here you will find : 
 - Pipeline : various files (mostly .R), that I used for data cleaning or to test ideas such as cocitation graphs, wordclouds or citation ratio through time.
