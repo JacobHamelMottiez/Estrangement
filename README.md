@@ -11,7 +11,7 @@ Here you will find :
 - **Visualisation** : This folder is where I store .png, .svg, .jpeg and the like. These are mainly figures that I use in my thesis and that have been generated in notebooks.
 
 ## Data
-Note that on my local repo (only available to me on my personnal computer), there is also a folder named Data. For propretary issues, I cannot share the data I used here since it comes from Scopus.
+Note that on my local repository, there is a folder named `Data`. For propretary issues, I cannot share the data I used here since it comes from Scopus.
 However, it is noteworthy to mention that OpenAlex is becoming a very appealing data base for the kind of analysis I conducted here. You can adapt my code to make it work with OpenAlex,
 just be sure to adapt the column names according to OpenAlex typology since it is not the same as Scopus (e.g. respectively title vs sourcetitle).
 
