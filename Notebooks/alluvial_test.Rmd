@@ -1,0 +1,105 @@
+---
+title: "alluvial_test"
+output: html_document
+---
+
+```{r}
+
+# file data in specialized_philo_bio.Rmd
+art_info <- spec_philo_bio |> select(citing_year, citing_id) |> left_join(refs_spec_philo_bio |> select(citing_id, cited_id), by = "citing_id")
+node_data2 <- left_join(node_data, art_info,join_by("id" == "citing_id"))
+
+node_data2 <-  node_data2 |> mutate(decade = citing_year - (citing_year %% 10))
+node_data2 <- node_data2 |> filter(!is.na(decade)) |> unique()
+
+alluvial_data = node_data2 |> select(cited_id, decade, community) |> distinct()
+
+alluvial_data <- alluvial_data |> group_by(cited_id) |> add_count(community) |> arrange(desc(n)) |> distinct() |> ungroup()
+
+
+alluvial_data <- alluvial_data %>%
+  group_by(cited_id, decade) %>%
+  filter(n_distinct(community) == 1) %>%
+  ungroup()
+alluvial_data <- alluvial_data |> filter(decade !=1980 & decade !=1990)
+
+```
+
+```{r, Alluvial, cache = TRUE}
+
+alluvial_data |> filter(decade == 2000)
+
+g <- ggplot(alluvial_data, aes(x = decade, stratum = community, alluvium = cited_id, fill = as.factor(community))) +
+  geom_flow(stat = "alluvium", aes.bind = TRUE, alpha = 0.6) +
+  geom_stratum(alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Cluster Changes Over Time", x = "Year", y = "N. refs. Cluster", fill = "Cluster") 
+
+g
+```
+
+```{r}
+alluvial_data2 <- alluvial_data |> group_by(decade) %>%
+   mutate(decade_n = n()) %>%
+   ungroup() %>%
+   group_by(decade, community) %>%
+   summarise(
+      n = n(),
+      decade_n,
+      prop = n / decade_n
+   )
+
+
+alluvial_data2 <- alluvial_data2 |> distinct()
+alluvial_data2$community = as.character(alluvial_data2$community)
+
+p <- ggplot(alluvial_data2, aes(x = decade, node = community, value = prop, fill = community, label = community)) +
+   geom_sankey_bump() +
+   theme_minimal() +
+   theme(
+      legend.position = "bottom",
+      plot.background = element_rect(fill = "grey99", color = NA)
+   )
+ggplotly(p)
+```
+
+```{r}
+df <- alluvial_data %>%
+  arrange(cited_id, decade) %>%
+  group_by(cited_id) %>%
+  mutate(
+    next_decade = lead(decade),
+    next_community = lead(community)
+  ) %>%
+  ungroup()
+
+df |> filter(decade == 2000) # 30 000
+df |> filter(decade == 2010) # 50 000
+df |> filter(decade == 2020) # 30 000
+
+df <- df |> filter(n >1) |> select(decade, community, next_decade, next_community)
+df <- df|> distinct()
+
+df |> filter(decade == 2000) # 30 000
+df |> filter(decade == 2010) # 50 000
+df |> filter(decade == 2020) # 30 000
+
+
+ggplot(df, aes(x = decade, 
+               next_x = next_decade, 
+               node = community, 
+               next_node = next_community,
+               fill = factor(community),
+               label = community)) +
+  geom_sankey() +
+  geom_sankey_label() 
+
+
+df |> filter(community == 4)
+```
+```{r}
+node_data |> filter(cited_id  == "0000172513")
+
+
+
+```
