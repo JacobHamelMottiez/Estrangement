@@ -1,0 +1,169 @@
+---
+title: "Specialized philo. of biology"
+author: "Jacob Hamel-Mottiez"
+date: "`r Sys.Date()`"
+output: 
+  md_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(plotly)
+library(readxl)
+library(ggplot2)
+library(tidygraph)
+library(igraph)
+library(ggalluvial)
+library(ggsankey) # devtools::install_github("davidsjoberg/ggsankey")
+library(shadowtext)
+```
+
+# Data 
+```{r DATA}
+dir <- "C:/Users/jacob/OneDrive - Université Laval/biophilo/Data/pybiblio/SPECIALIZED PHILOSOPHY OF BIOLOGY/" 
+spec_philo_bio <- read_csv(paste0(dir, "ARTICLES_SPECIAL_PHILO_BIO.csv"))
+refs_spec_philo_bio <- read_csv(paste0(dir, "REFERENCES_SPECIAL_PHILO_BIO.csv"))
+```
+
+# Define some preliminary functions
+```{r, FCT}
+fct_DT <- function(x) {
+        dt <- DT:: datatable(head(x, 1000),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         pageLength = 5))
+        dt
+}
+
+fct_percent <- function(x) {
+  dt <-  x |>  mutate(Percent = n/sum(x$n, na.rm = TRUE)*100) |>
+    mutate(across(Percent, round, 3)) 
+  dt
+}
+```
+
+# Visualisation
+```{r, fig.width=10, fig.height=10}
+spec_philo_bio <- spec_philo_bio |> 
+mutate(publicationName = case_when(
+  publicationName == "STUDIES IN HISTORY AND PHILOSOPHY OF SCIENCE PART C :STUDIES IN HISTORY AND PHILOSOPHY OF BIOLOGICAL AND BIOMEDICAL SCIENCES" ~ "STUDIES IN HISTORY AND PHILOSOPHY OF SCIENCE PART C", TRUE ~ publicationName))
+  
+
+# Total
+art_journal_prop <- spec_philo_bio |> count(publicationName) |> fct_percent() |> arrange(desc(n))  |> rename("No. of Papers" = "n")
+fct_DT(art_journal_prop)
+
+# By year 
+spec_philo_bio_year <- spec_philo_bio |> select(publicationName, coverDate) |> group_by(publicationName) |> count(coverDate)
+
+g <- ggplot(spec_philo_bio_year, aes(x = coverDate, y = n, group = publicationName, fill = publicationName, color = publicationName)) +
+    geom_point() +
+    geom_smooth(method = "loess",  # Loess smoothing
+                fill = "gray", alpha = 0.5, se = TRUE) +
+    labs(title = "Philosophy of biology articles by journals through time",
+         x = "Year", 
+         y = "No. of Papers") +
+    theme(
+      legend.position = "none",
+      plot.title = element_text(hjust = 0.5, face = "bold"),   # Bold, centered title
+      axis.text.x = element_text(size=14, face = "bold"),              # Bold x-axis text
+      axis.text.y = element_text(size=14, face = "bold"),               # Bold y-axis text
+      axis.title.x = element_text(size=14, face="bold"),    
+      axis.title.y = element_text(size=14, face="bold"),
+    ) +
+  facet_grid(~publicationName)
+g
+```
+
+
+# References
+```{r}
+most_cited_references_titles <- refs_spec_philo_bio |> count(sourcetitle) |> arrange(desc(n)) 
+fct_DT(most_cited_references_titles) 
+fct_percent(most_cited_references_titles)
+
+```
+How many of these sources are present in Scopus database? 
+```{r}
+
+```
+
+
+# Cocitation network 
+```{r}
+cocit_data <- refs_spec_philo_bio |> select(cited_id, citing_id)
+cocit_data_filtered <- cocit_data |> add_count(cited_id) |> filter(n>=5) # ~ 36 000
+
+
+# Create an igraph object from the bibliographic coupling data
+graph <- graph_from_data_frame(cocit_data_filtered, directed = FALSE)
+community <- cluster_louvain(graph)
+tbl_graph <- graph |> as_tbl_graph()
+
+# Get community membership
+V(tbl_graph)$community <- membership(community)
+V(tbl_graph)$color <- as.factor(V(tbl_graph)$community)
+V(tbl_graph)$weight <- degree(tbl_graph)
+
+palette <- scico::scico(n = 17, palette = "hawaii") %>% # creating a color palette
+  sample()
+
+community_colors <- palette[membership(community)]
+
+# Generate the node list
+node_data <- data.frame(
+  id = V(tbl_graph)$name,
+  community = V(tbl_graph)$community,
+  weight = V(tbl_graph)$weight,
+  color = community_colors
+)
+
+# Generate the edge list with weights
+
+edge_list <- tbl_graph |> as_edgelist() 
+edge_data <- edge_list |>  as_tibble() |> rename(from = V1, to = V2)
+write_csv(edge_data, paste0(dir,"edges.csv"))
+
+
+
+# Get back some info 
+data <- rename(refs_spec_philo_bio, id = cited_id)
+data <- data |> select(id, cited_title, authors, cited_year, sourcetitle)
+
+
+
+node_data <- node_data |> left_join(data, by = "id") 
+node_data <- node_data |>  mutate(info = paste0(authors, ", ", cited_year, ", ", cited_title,", ", sourcetitle)) |> distinct()
+write_csv(node_data, paste0(dir,"node.csv"))
+
+
+```
+
+```{r, COSMOGRAPH}
+#nodes
+node_data_cg <- node_data|> distinct() |> select(id, community, weight, info, color, cited_year)
+node_data_cg <- rename(node_data_cg,  category = color, label = info, value = weight)
+node_data_cg <- node_data_cg |> filter(label != "NANANANA") |> arrange(desc(value))
+node_data_cg$cited_year <- as.character(node_data_cg$cited_year)
+
+write_csv(node_data_cg, paste0(dir, "nodes_data_cg.csv"))
+
+#edges
+edge_data_cg <- rename(edge_data, source= from, target = to)
+write_csv(edge_data_cg,paste0(dir, "edges_data_cg.csv"))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
