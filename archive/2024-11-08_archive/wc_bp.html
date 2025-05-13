@@ -1,0 +1,2272 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>wordcloud2</title>
+<style type="text/css">@layer htmltools {
+.html-fill-container {
+display: flex;
+flex-direction: column;
+
+min-height: 0;
+min-width: 0;
+}
+.html-fill-container > .html-fill-item {
+
+flex: 1 1 auto;
+min-height: 0;
+min-width: 0;
+}
+.html-fill-container > :not(.html-fill-item) {
+
+flex: 0 0 auto;
+}
+}
+</style>
+<script>(function() {
+  // If window.HTMLWidgets is already defined, then use it; otherwise create a
+  // new object. This allows preceding code to set options that affect the
+  // initialization process (though none currently exist).
+  window.HTMLWidgets = window.HTMLWidgets || {};
+
+  // See if we're running in a viewer pane. If not, we're in a web browser.
+  var viewerMode = window.HTMLWidgets.viewerMode =
+      /\bviewer_pane=1\b/.test(window.location);
+
+  // See if we're running in Shiny mode. If not, it's a static document.
+  // Note that static widgets can appear in both Shiny and static modes, but
+  // obviously, Shiny widgets can only appear in Shiny apps/documents.
+  var shinyMode = window.HTMLWidgets.shinyMode =
+      typeof(window.Shiny) !== "undefined" && !!window.Shiny.outputBindings;
+
+  // We can't count on jQuery being available, so we implement our own
+  // version if necessary.
+  function querySelectorAll(scope, selector) {
+    if (typeof(jQuery) !== "undefined" && scope instanceof jQuery) {
+      return scope.find(selector);
+    }
+    if (scope.querySelectorAll) {
+      return scope.querySelectorAll(selector);
+    }
+  }
+
+  function asArray(value) {
+    if (value === null)
+      return [];
+    if ($.isArray(value))
+      return value;
+    return [value];
+  }
+
+  // Implement jQuery's extend
+  function extend(target /*, ... */) {
+    if (arguments.length == 1) {
+      return target;
+    }
+    for (var i = 1; i < arguments.length; i++) {
+      var source = arguments[i];
+      for (var prop in source) {
+        if (source.hasOwnProperty(prop)) {
+          target[prop] = source[prop];
+        }
+      }
+    }
+    return target;
+  }
+
+  // IE8 doesn't support Array.forEach.
+  function forEach(values, callback, thisArg) {
+    if (values.forEach) {
+      values.forEach(callback, thisArg);
+    } else {
+      for (var i = 0; i < values.length; i++) {
+        callback.call(thisArg, values[i], i, values);
+      }
+    }
+  }
+
+  // Replaces the specified method with the return value of funcSource.
+  //
+  // Note that funcSource should not BE the new method, it should be a function
+  // that RETURNS the new method. funcSource receives a single argument that is
+  // the overridden method, it can be called from the new method. The overridden
+  // method can be called like a regular function, it has the target permanently
+  // bound to it so "this" will work correctly.
+  function overrideMethod(target, methodName, funcSource) {
+    var superFunc = target[methodName] || function() {};
+    var superFuncBound = function() {
+      return superFunc.apply(target, arguments);
+    };
+    target[methodName] = funcSource(superFuncBound);
+  }
+
+  // Add a method to delegator that, when invoked, calls
+  // delegatee.methodName. If there is no such method on
+  // the delegatee, but there was one on delegator before
+  // delegateMethod was called, then the original version
+  // is invoked instead.
+  // For example:
+  //
+  // var a = {
+  //   method1: function() { console.log('a1'); }
+  //   method2: function() { console.log('a2'); }
+  // };
+  // var b = {
+  //   method1: function() { console.log('b1'); }
+  // };
+  // delegateMethod(a, b, "method1");
+  // delegateMethod(a, b, "method2");
+  // a.method1();
+  // a.method2();
+  //
+  // The output would be "b1", "a2".
+  function delegateMethod(delegator, delegatee, methodName) {
+    var inherited = delegator[methodName];
+    delegator[methodName] = function() {
+      var target = delegatee;
+      var method = delegatee[methodName];
+
+      // The method doesn't exist on the delegatee. Instead,
+      // call the method on the delegator, if it exists.
+      if (!method) {
+        target = delegator;
+        method = inherited;
+      }
+
+      if (method) {
+        return method.apply(target, arguments);
+      }
+    };
+  }
+
+  // Implement a vague facsimilie of jQuery's data method
+  function elementData(el, name, value) {
+    if (arguments.length == 2) {
+      return el["htmlwidget_data_" + name];
+    } else if (arguments.length == 3) {
+      el["htmlwidget_data_" + name] = value;
+      return el;
+    } else {
+      throw new Error("Wrong number of arguments for elementData: " +
+        arguments.length);
+    }
+  }
+
+  // http://stackoverflow.com/questions/3446170/escape-string-for-use-in-javascript-regex
+  function escapeRegExp(str) {
+    return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+  }
+
+  function hasClass(el, className) {
+    var re = new RegExp("\\b" + escapeRegExp(className) + "\\b");
+    return re.test(el.className);
+  }
+
+  // elements - array (or array-like object) of HTML elements
+  // className - class name to test for
+  // include - if true, only return elements with given className;
+  //   if false, only return elements *without* given className
+  function filterByClass(elements, className, include) {
+    var results = [];
+    for (var i = 0; i < elements.length; i++) {
+      if (hasClass(elements[i], className) == include)
+        results.push(elements[i]);
+    }
+    return results;
+  }
+
+  function on(obj, eventName, func) {
+    if (obj.addEventListener) {
+      obj.addEventListener(eventName, func, false);
+    } else if (obj.attachEvent) {
+      obj.attachEvent(eventName, func);
+    }
+  }
+
+  function off(obj, eventName, func) {
+    if (obj.removeEventListener)
+      obj.removeEventListener(eventName, func, false);
+    else if (obj.detachEvent) {
+      obj.detachEvent(eventName, func);
+    }
+  }
+
+  // Translate array of values to top/right/bottom/left, as usual with
+  // the "padding" CSS property
+  // https://developer.mozilla.org/en-US/docs/Web/CSS/padding
+  function unpackPadding(value) {
+    if (typeof(value) === "number")
+      value = [value];
+    if (value.length === 1) {
+      return {top: value[0], right: value[0], bottom: value[0], left: value[0]};
+    }
+    if (value.length === 2) {
+      return {top: value[0], right: value[1], bottom: value[0], left: value[1]};
+    }
+    if (value.length === 3) {
+      return {top: value[0], right: value[1], bottom: value[2], left: value[1]};
+    }
+    if (value.length === 4) {
+      return {top: value[0], right: value[1], bottom: value[2], left: value[3]};
+    }
+  }
+
+  // Convert an unpacked padding object to a CSS value
+  function paddingToCss(paddingObj) {
+    return paddingObj.top + "px " + paddingObj.right + "px " + paddingObj.bottom + "px " + paddingObj.left + "px";
+  }
+
+  // Makes a number suitable for CSS
+  function px(x) {
+    if (typeof(x) === "number")
+      return x + "px";
+    else
+      return x;
+  }
+
+  // Retrieves runtime widget sizing information for an element.
+  // The return value is either null, or an object with fill, padding,
+  // defaultWidth, defaultHeight fields.
+  function sizingPolicy(el) {
+    var sizingEl = document.querySelector("script[data-for='" + el.id + "'][type='application/htmlwidget-sizing']");
+    if (!sizingEl)
+      return null;
+    var sp = JSON.parse(sizingEl.textContent || sizingEl.text || "{}");
+    if (viewerMode) {
+      return sp.viewer;
+    } else {
+      return sp.browser;
+    }
+  }
+
+  // @param tasks Array of strings (or falsy value, in which case no-op).
+  //   Each element must be a valid JavaScript expression that yields a
+  //   function. Or, can be an array of objects with "code" and "data"
+  //   properties; in this case, the "code" property should be a string
+  //   of JS that's an expr that yields a function, and "data" should be
+  //   an object that will be added as an additional argument when that
+  //   function is called.
+  // @param target The object that will be "this" for each function
+  //   execution.
+  // @param args Array of arguments to be passed to the functions. (The
+  //   same arguments will be passed to all functions.)
+  function evalAndRun(tasks, target, args) {
+    if (tasks) {
+      forEach(tasks, function(task) {
+        var theseArgs = args;
+        if (typeof(task) === "object") {
+          theseArgs = theseArgs.concat([task.data]);
+          task = task.code;
+        }
+        var taskFunc = tryEval(task);
+        if (typeof(taskFunc) !== "function") {
+          throw new Error("Task must be a function! Source:\n" + task);
+        }
+        taskFunc.apply(target, theseArgs);
+      });
+    }
+  }
+
+  // Attempt eval() both with and without enclosing in parentheses.
+  // Note that enclosing coerces a function declaration into
+  // an expression that eval() can parse
+  // (otherwise, a SyntaxError is thrown)
+  function tryEval(code) {
+    var result = null;
+    try {
+      result = eval("(" + code + ")");
+    } catch(error) {
+      if (!(error instanceof SyntaxError)) {
+        throw error;
+      }
+      try {
+        result = eval(code);
+      } catch(e) {
+        if (e instanceof SyntaxError) {
+          throw error;
+        } else {
+          throw e;
+        }
+      }
+    }
+    return result;
+  }
+
+  function initSizing(el) {
+    var sizing = sizingPolicy(el);
+    if (!sizing)
+      return;
+
+    var cel = document.getElementById("htmlwidget_container");
+    if (!cel)
+      return;
+
+    if (typeof(sizing.padding) !== "undefined") {
+      document.body.style.margin = "0";
+      document.body.style.padding = paddingToCss(unpackPadding(sizing.padding));
+    }
+
+    if (sizing.fill) {
+      document.body.style.overflow = "hidden";
+      document.body.style.width = "100%";
+      document.body.style.height = "100%";
+      document.documentElement.style.width = "100%";
+      document.documentElement.style.height = "100%";
+      cel.style.position = "absolute";
+      var pad = unpackPadding(sizing.padding);
+      cel.style.top = pad.top + "px";
+      cel.style.right = pad.right + "px";
+      cel.style.bottom = pad.bottom + "px";
+      cel.style.left = pad.left + "px";
+      el.style.width = "100%";
+      el.style.height = "100%";
+
+      return {
+        getWidth: function() { return cel.getBoundingClientRect().width; },
+        getHeight: function() { return cel.getBoundingClientRect().height; }
+      };
+
+    } else {
+      el.style.width = px(sizing.width);
+      el.style.height = px(sizing.height);
+
+      return {
+        getWidth: function() { return cel.getBoundingClientRect().width; },
+        getHeight: function() { return cel.getBoundingClientRect().height; }
+      };
+    }
+  }
+
+  // Default implementations for methods
+  var defaults = {
+    find: function(scope) {
+      return querySelectorAll(scope, "." + this.name);
+    },
+    renderError: function(el, err) {
+      var $el = $(el);
+
+      this.clearError(el);
+
+      // Add all these error classes, as Shiny does
+      var errClass = "shiny-output-error";
+      if (err.type !== null) {
+        // use the classes of the error condition as CSS class names
+        errClass = errClass + " " + $.map(asArray(err.type), function(type) {
+          return errClass + "-" + type;
+        }).join(" ");
+      }
+      errClass = errClass + " htmlwidgets-error";
+
+      // Is el inline or block? If inline or inline-block, just display:none it
+      // and add an inline error.
+      var display = $el.css("display");
+      $el.data("restore-display-mode", display);
+
+      if (display === "inline" || display === "inline-block") {
+        $el.hide();
+        if (err.message !== "") {
+          var errorSpan = $("<span>").addClass(errClass);
+          errorSpan.text(err.message);
+          $el.after(errorSpan);
+        }
+      } else if (display === "block") {
+        // If block, add an error just after the el, set visibility:none on the
+        // el, and position the error to be on top of the el.
+        // Mark it with a unique ID and CSS class so we can remove it later.
+        $el.css("visibility", "hidden");
+        if (err.message !== "") {
+          var errorDiv = $("<div>").addClass(errClass).css("position", "absolute")
+            .css("top", el.offsetTop)
+            .css("left", el.offsetLeft)
+            // setting width can push out the page size, forcing otherwise
+            // unnecessary scrollbars to appear and making it impossible for
+            // the element to shrink; so use max-width instead
+            .css("maxWidth", el.offsetWidth)
+            .css("height", el.offsetHeight);
+          errorDiv.text(err.message);
+          $el.after(errorDiv);
+
+          // Really dumb way to keep the size/position of the error in sync with
+          // the parent element as the window is resized or whatever.
+          var intId = setInterval(function() {
+            if (!errorDiv[0].parentElement) {
+              clearInterval(intId);
+              return;
+            }
+            errorDiv
+              .css("top", el.offsetTop)
+              .css("left", el.offsetLeft)
+              .css("maxWidth", el.offsetWidth)
+              .css("height", el.offsetHeight);
+          }, 500);
+        }
+      }
+    },
+    clearError: function(el) {
+      var $el = $(el);
+      var display = $el.data("restore-display-mode");
+      $el.data("restore-display-mode", null);
+
+      if (display === "inline" || display === "inline-block") {
+        if (display)
+          $el.css("display", display);
+        $(el.nextSibling).filter(".htmlwidgets-error").remove();
+      } else if (display === "block"){
+        $el.css("visibility", "inherit");
+        $(el.nextSibling).filter(".htmlwidgets-error").remove();
+      }
+    },
+    sizing: {}
+  };
+
+  // Called by widget bindings to register a new type of widget. The definition
+  // object can contain the following properties:
+  // - name (required) - A string indicating the binding name, which will be
+  //   used by default as the CSS classname to look for.
+  // - initialize (optional) - A function(el) that will be called once per
+  //   widget element; if a value is returned, it will be passed as the third
+  //   value to renderValue.
+  // - renderValue (required) - A function(el, data, initValue) that will be
+  //   called with data. Static contexts will cause this to be called once per
+  //   element; Shiny apps will cause this to be called multiple times per
+  //   element, as the data changes.
+  window.HTMLWidgets.widget = function(definition) {
+    if (!definition.name) {
+      throw new Error("Widget must have a name");
+    }
+    if (!definition.type) {
+      throw new Error("Widget must have a type");
+    }
+    // Currently we only support output widgets
+    if (definition.type !== "output") {
+      throw new Error("Unrecognized widget type '" + definition.type + "'");
+    }
+    // TODO: Verify that .name is a valid CSS classname
+
+    // Support new-style instance-bound definitions. Old-style class-bound
+    // definitions have one widget "object" per widget per type/class of
+    // widget; the renderValue and resize methods on such widget objects
+    // take el and instance arguments, because the widget object can't
+    // store them. New-style instance-bound definitions have one widget
+    // object per widget instance; the definition that's passed in doesn't
+    // provide renderValue or resize methods at all, just the single method
+    //   factory(el, width, height)
+    // which returns an object that has renderValue(x) and resize(w, h).
+    // This enables a far more natural programming style for the widget
+    // author, who can store per-instance state using either OO-style
+    // instance fields or functional-style closure variables (I guess this
+    // is in contrast to what can only be called C-style pseudo-OO which is
+    // what we required before).
+    if (definition.factory) {
+      definition = createLegacyDefinitionAdapter(definition);
+    }
+
+    if (!definition.renderValue) {
+      throw new Error("Widget must have a renderValue function");
+    }
+
+    // For static rendering (non-Shiny), use a simple widget registration
+    // scheme. We also use this scheme for Shiny apps/documents that also
+    // contain static widgets.
+    window.HTMLWidgets.widgets = window.HTMLWidgets.widgets || [];
+    // Merge defaults into the definition; don't mutate the original definition.
+    var staticBinding = extend({}, defaults, definition);
+    overrideMethod(staticBinding, "find", function(superfunc) {
+      return function(scope) {
+        var results = superfunc(scope);
+        // Filter out Shiny outputs, we only want the static kind
+        return filterByClass(results, "html-widget-output", false);
+      };
+    });
+    window.HTMLWidgets.widgets.push(staticBinding);
+
+    if (shinyMode) {
+      // Shiny is running. Register the definition with an output binding.
+      // The definition itself will not be the output binding, instead
+      // we will make an output binding object that delegates to the
+      // definition. This is because we foolishly used the same method
+      // name (renderValue) for htmlwidgets definition and Shiny bindings
+      // but they actually have quite different semantics (the Shiny
+      // bindings receive data that includes lots of metadata that it
+      // strips off before calling htmlwidgets renderValue). We can't
+      // just ignore the difference because in some widgets it's helpful
+      // to call this.renderValue() from inside of resize(), and if
+      // we're not delegating, then that call will go to the Shiny
+      // version instead of the htmlwidgets version.
+
+      // Merge defaults with definition, without mutating either.
+      var bindingDef = extend({}, defaults, definition);
+
+      // This object will be our actual Shiny binding.
+      var shinyBinding = new Shiny.OutputBinding();
+
+      // With a few exceptions, we'll want to simply use the bindingDef's
+      // version of methods if they are available, otherwise fall back to
+      // Shiny's defaults. NOTE: If Shiny's output bindings gain additional
+      // methods in the future, and we want them to be overrideable by
+      // HTMLWidget binding definitions, then we'll need to add them to this
+      // list.
+      delegateMethod(shinyBinding, bindingDef, "getId");
+      delegateMethod(shinyBinding, bindingDef, "onValueChange");
+      delegateMethod(shinyBinding, bindingDef, "onValueError");
+      delegateMethod(shinyBinding, bindingDef, "renderError");
+      delegateMethod(shinyBinding, bindingDef, "clearError");
+      delegateMethod(shinyBinding, bindingDef, "showProgress");
+
+      // The find, renderValue, and resize are handled differently, because we
+      // want to actually decorate the behavior of the bindingDef methods.
+
+      shinyBinding.find = function(scope) {
+        var results = bindingDef.find(scope);
+
+        // Only return elements that are Shiny outputs, not static ones
+        var dynamicResults = results.filter(".html-widget-output");
+
+        // It's possible that whatever caused Shiny to think there might be
+        // new dynamic outputs, also caused there to be new static outputs.
+        // Since there might be lots of different htmlwidgets bindings, we
+        // schedule execution for later--no need to staticRender multiple
+        // times.
+        if (results.length !== dynamicResults.length)
+          scheduleStaticRender();
+
+        return dynamicResults;
+      };
+
+      // Wrap renderValue to handle initialization, which unfortunately isn't
+      // supported natively by Shiny at the time of this writing.
+
+      shinyBinding.renderValue = function(el, data) {
+        Shiny.renderDependencies(data.deps);
+        // Resolve strings marked as javascript literals to objects
+        if (!(data.evals instanceof Array)) data.evals = [data.evals];
+        for (var i = 0; data.evals && i < data.evals.length; i++) {
+          window.HTMLWidgets.evaluateStringMember(data.x, data.evals[i]);
+        }
+        if (!bindingDef.renderOnNullValue) {
+          if (data.x === null) {
+            el.style.visibility = "hidden";
+            return;
+          } else {
+            el.style.visibility = "inherit";
+          }
+        }
+        if (!elementData(el, "initialized")) {
+          initSizing(el);
+
+          elementData(el, "initialized", true);
+          if (bindingDef.initialize) {
+            var rect = el.getBoundingClientRect();
+            var result = bindingDef.initialize(el, rect.width, rect.height);
+            elementData(el, "init_result", result);
+          }
+        }
+        bindingDef.renderValue(el, data.x, elementData(el, "init_result"));
+        evalAndRun(data.jsHooks.render, elementData(el, "init_result"), [el, data.x]);
+      };
+
+      // Only override resize if bindingDef implements it
+      if (bindingDef.resize) {
+        shinyBinding.resize = function(el, width, height) {
+          // Shiny can call resize before initialize/renderValue have been
+          // called, which doesn't make sense for widgets.
+          if (elementData(el, "initialized")) {
+            bindingDef.resize(el, width, height, elementData(el, "init_result"));
+          }
+        };
+      }
+
+      Shiny.outputBindings.register(shinyBinding, bindingDef.name);
+    }
+  };
+
+  var scheduleStaticRenderTimerId = null;
+  function scheduleStaticRender() {
+    if (!scheduleStaticRenderTimerId) {
+      scheduleStaticRenderTimerId = setTimeout(function() {
+        scheduleStaticRenderTimerId = null;
+        window.HTMLWidgets.staticRender();
+      }, 1);
+    }
+  }
+
+  // Render static widgets after the document finishes loading
+  // Statically render all elements that are of this widget's class
+  window.HTMLWidgets.staticRender = function() {
+    var bindings = window.HTMLWidgets.widgets || [];
+    forEach(bindings, function(binding) {
+      var matches = binding.find(document.documentElement);
+      forEach(matches, function(el) {
+        var sizeObj = initSizing(el, binding);
+
+        var getSize = function(el) {
+          if (sizeObj) {
+            return {w: sizeObj.getWidth(), h: sizeObj.getHeight()}
+          } else {
+            var rect = el.getBoundingClientRect();
+            return {w: rect.width, h: rect.height}
+          }
+        };
+
+        if (hasClass(el, "html-widget-static-bound"))
+          return;
+        el.className = el.className + " html-widget-static-bound";
+
+        var initResult;
+        if (binding.initialize) {
+          var size = getSize(el);
+          initResult = binding.initialize(el, size.w, size.h);
+          elementData(el, "init_result", initResult);
+        }
+
+        if (binding.resize) {
+          var lastSize = getSize(el);
+          var resizeHandler = function(e) {
+            var size = getSize(el);
+            if (size.w === 0 && size.h === 0)
+              return;
+            if (size.w === lastSize.w && size.h === lastSize.h)
+              return;
+            lastSize = size;
+            binding.resize(el, size.w, size.h, initResult);
+          };
+
+          on(window, "resize", resizeHandler);
+
+          // This is needed for cases where we're running in a Shiny
+          // app, but the widget itself is not a Shiny output, but
+          // rather a simple static widget. One example of this is
+          // an rmarkdown document that has runtime:shiny and widget
+          // that isn't in a render function. Shiny only knows to
+          // call resize handlers for Shiny outputs, not for static
+          // widgets, so we do it ourselves.
+          if (window.jQuery) {
+            window.jQuery(document).on(
+              "shown.htmlwidgets shown.bs.tab.htmlwidgets shown.bs.collapse.htmlwidgets",
+              resizeHandler
+            );
+            window.jQuery(document).on(
+              "hidden.htmlwidgets hidden.bs.tab.htmlwidgets hidden.bs.collapse.htmlwidgets",
+              resizeHandler
+            );
+          }
+
+          // This is needed for the specific case of ioslides, which
+          // flips slides between display:none and display:block.
+          // Ideally we would not have to have ioslide-specific code
+          // here, but rather have ioslides raise a generic event,
+          // but the rmarkdown package just went to CRAN so the
+          // window to getting that fixed may be long.
+          if (window.addEventListener) {
+            // It's OK to limit this to window.addEventListener
+            // browsers because ioslides itself only supports
+            // such browsers.
+            on(document, "slideenter", resizeHandler);
+            on(document, "slideleave", resizeHandler);
+          }
+        }
+
+        var scriptData = document.querySelector("script[data-for='" + el.id + "'][type='application/json']");
+        if (scriptData) {
+          var data = JSON.parse(scriptData.textContent || scriptData.text);
+          // Resolve strings marked as javascript literals to objects
+          if (!(data.evals instanceof Array)) data.evals = [data.evals];
+          for (var k = 0; data.evals && k < data.evals.length; k++) {
+            window.HTMLWidgets.evaluateStringMember(data.x, data.evals[k]);
+          }
+          binding.renderValue(el, data.x, initResult);
+          evalAndRun(data.jsHooks.render, initResult, [el, data.x]);
+        }
+      });
+    });
+
+    invokePostRenderHandlers();
+  }
+
+
+  function has_jQuery3() {
+    if (!window.jQuery) {
+      return false;
+    }
+    var $version = window.jQuery.fn.jquery;
+    var $major_version = parseInt($version.split(".")[0]);
+    return $major_version >= 3;
+  }
+
+  /*
+  / Shiny 1.4 bumped jQuery from 1.x to 3.x which means jQuery's
+  / on-ready handler (i.e., $(fn)) is now asyncronous (i.e., it now
+  / really means $(setTimeout(fn)).
+  / https://jquery.com/upgrade-guide/3.0/#breaking-change-document-ready-handlers-are-now-asynchronous
+  /
+  / Since Shiny uses $() to schedule initShiny, shiny>=1.4 calls initShiny
+  / one tick later than it did before, which means staticRender() is
+  / called renderValue() earlier than (advanced) widget authors might be expecting.
+  / https://github.com/rstudio/shiny/issues/2630
+  /
+  / For a concrete example, leaflet has some methods (e.g., updateBounds)
+  / which reference Shiny methods registered in initShiny (e.g., setInputValue).
+  / Since leaflet is privy to this life-cycle, it knows to use setTimeout() to
+  / delay execution of those methods (until Shiny methods are ready)
+  / https://github.com/rstudio/leaflet/blob/18ec981/javascript/src/index.js#L266-L268
+  /
+  / Ideally widget authors wouldn't need to use this setTimeout() hack that
+  / leaflet uses to call Shiny methods on a staticRender(). In the long run,
+  / the logic initShiny should be broken up so that method registration happens
+  / right away, but binding happens later.
+  */
+  function maybeStaticRenderLater() {
+    if (shinyMode && has_jQuery3()) {
+      window.jQuery(window.HTMLWidgets.staticRender);
+    } else {
+      window.HTMLWidgets.staticRender();
+    }
+  }
+
+  if (document.addEventListener) {
+    document.addEventListener("DOMContentLoaded", function() {
+      document.removeEventListener("DOMContentLoaded", arguments.callee, false);
+      maybeStaticRenderLater();
+    }, false);
+  } else if (document.attachEvent) {
+    document.attachEvent("onreadystatechange", function() {
+      if (document.readyState === "complete") {
+        document.detachEvent("onreadystatechange", arguments.callee);
+        maybeStaticRenderLater();
+      }
+    });
+  }
+
+
+  window.HTMLWidgets.getAttachmentUrl = function(depname, key) {
+    // If no key, default to the first item
+    if (typeof(key) === "undefined")
+      key = 1;
+
+    var link = document.getElementById(depname + "-" + key + "-attachment");
+    if (!link) {
+      throw new Error("Attachment " + depname + "/" + key + " not found in document");
+    }
+    return link.getAttribute("href");
+  };
+
+  window.HTMLWidgets.dataframeToD3 = function(df) {
+    var names = [];
+    var length;
+    for (var name in df) {
+        if (df.hasOwnProperty(name))
+            names.push(name);
+        if (typeof(df[name]) !== "object" || typeof(df[name].length) === "undefined") {
+            throw new Error("All fields must be arrays");
+        } else if (typeof(length) !== "undefined" && length !== df[name].length) {
+            throw new Error("All fields must be arrays of the same length");
+        }
+        length = df[name].length;
+    }
+    var results = [];
+    var item;
+    for (var row = 0; row < length; row++) {
+        item = {};
+        for (var col = 0; col < names.length; col++) {
+            item[names[col]] = df[names[col]][row];
+        }
+        results.push(item);
+    }
+    return results;
+  };
+
+  window.HTMLWidgets.transposeArray2D = function(array) {
+      if (array.length === 0) return array;
+      var newArray = array[0].map(function(col, i) {
+          return array.map(function(row) {
+              return row[i]
+          })
+      });
+      return newArray;
+  };
+  // Split value at splitChar, but allow splitChar to be escaped
+  // using escapeChar. Any other characters escaped by escapeChar
+  // will be included as usual (including escapeChar itself).
+  function splitWithEscape(value, splitChar, escapeChar) {
+    var results = [];
+    var escapeMode = false;
+    var currentResult = "";
+    for (var pos = 0; pos < value.length; pos++) {
+      if (!escapeMode) {
+        if (value[pos] === splitChar) {
+          results.push(currentResult);
+          currentResult = "";
+        } else if (value[pos] === escapeChar) {
+          escapeMode = true;
+        } else {
+          currentResult += value[pos];
+        }
+      } else {
+        currentResult += value[pos];
+        escapeMode = false;
+      }
+    }
+    if (currentResult !== "") {
+      results.push(currentResult);
+    }
+    return results;
+  }
+  // Function authored by Yihui/JJ Allaire
+  window.HTMLWidgets.evaluateStringMember = function(o, member) {
+    var parts = splitWithEscape(member, '.', '\\');
+    for (var i = 0, l = parts.length; i < l; i++) {
+      var part = parts[i];
+      // part may be a character or 'numeric' member name
+      if (o !== null && typeof o === "object" && part in o) {
+        if (i == (l - 1)) { // if we are at the end of the line then evalulate
+          if (typeof o[part] === "string")
+            o[part] = tryEval(o[part]);
+        } else { // otherwise continue to next embedded object
+          o = o[part];
+        }
+      }
+    }
+  };
+
+  // Retrieve the HTMLWidget instance (i.e. the return value of an
+  // HTMLWidget binding's initialize() or factory() function)
+  // associated with an element, or null if none.
+  window.HTMLWidgets.getInstance = function(el) {
+    return elementData(el, "init_result");
+  };
+
+  // Finds the first element in the scope that matches the selector,
+  // and returns the HTMLWidget instance (i.e. the return value of
+  // an HTMLWidget binding's initialize() or factory() function)
+  // associated with that element, if any. If no element matches the
+  // selector, or the first matching element has no HTMLWidget
+  // instance associated with it, then null is returned.
+  //
+  // The scope argument is optional, and defaults to window.document.
+  window.HTMLWidgets.find = function(scope, selector) {
+    if (arguments.length == 1) {
+      selector = scope;
+      scope = document;
+    }
+
+    var el = scope.querySelector(selector);
+    if (el === null) {
+      return null;
+    } else {
+      return window.HTMLWidgets.getInstance(el);
+    }
+  };
+
+  // Finds all elements in the scope that match the selector, and
+  // returns the HTMLWidget instances (i.e. the return values of
+  // an HTMLWidget binding's initialize() or factory() function)
+  // associated with the elements, in an array. If elements that
+  // match the selector don't have an associated HTMLWidget
+  // instance, the returned array will contain nulls.
+  //
+  // The scope argument is optional, and defaults to window.document.
+  window.HTMLWidgets.findAll = function(scope, selector) {
+    if (arguments.length == 1) {
+      selector = scope;
+      scope = document;
+    }
+
+    var nodes = scope.querySelectorAll(selector);
+    var results = [];
+    for (var i = 0; i < nodes.length; i++) {
+      results.push(window.HTMLWidgets.getInstance(nodes[i]));
+    }
+    return results;
+  };
+
+  var postRenderHandlers = [];
+  function invokePostRenderHandlers() {
+    while (postRenderHandlers.length) {
+      var handler = postRenderHandlers.shift();
+      if (handler) {
+        handler();
+      }
+    }
+  }
+
+  // Register the given callback function to be invoked after the
+  // next time static widgets are rendered.
+  window.HTMLWidgets.addPostRenderHandler = function(callback) {
+    postRenderHandlers.push(callback);
+  };
+
+  // Takes a new-style instance-bound definition, and returns an
+  // old-style class-bound definition. This saves us from having
+  // to rewrite all the logic in this file to accomodate both
+  // types of definitions.
+  function createLegacyDefinitionAdapter(defn) {
+    var result = {
+      name: defn.name,
+      type: defn.type,
+      initialize: function(el, width, height) {
+        return defn.factory(el, width, height);
+      },
+      renderValue: function(el, x, instance) {
+        return instance.renderValue(x);
+      },
+      resize: function(el, width, height, instance) {
+        return instance.resize(width, height);
+      }
+    };
+
+    if (defn.find)
+      result.find = defn.find;
+    if (defn.renderError)
+      result.renderError = defn.renderError;
+    if (defn.clearError)
+      result.clearError = defn.clearError;
+
+    return result;
+  }
+})();
+</script>
+<style type="text/css">#wcLabel {position: absolute;border: 2px solid #fff;box-shadow: 0 0 4px 0 #008;padding: 2px;pointer-events: none; }#wcSpan {position: absolute;top: 100%;left: 0;background-color: rgba(255, 255, 255, 0.8);color: #333;margin-top: 6px;padding: 0 0.5em;border-radius: 0.5em;white-space: nowrap; }</style>
+<script>/*!
+ * wordcloud2.js
+ * http://timdream.org/wordcloud2.js/
+ *
+ * Copyright 2011 - 2013 Tim Chien
+ * Released under the MIT license
+ */
+
+'use strict';
+
+// setImmediate
+if (!window.setImmediate) {
+  window.setImmediate = (function setupSetImmediate() {
+    return window.msSetImmediate ||
+    window.webkitSetImmediate ||
+    window.mozSetImmediate ||
+    window.oSetImmediate ||
+    (function setupSetZeroTimeout() {
+      if (!window.postMessage || !window.addEventListener) {
+        return null;
+      }
+
+      var callbacks = [undefined];
+      var message = 'zero-timeout-message';
+
+      // Like setTimeout, but only takes a function argument.  There's
+      // no time argument (always zero) and no arguments (you have to
+      // use a closure).
+      var setZeroTimeout = function setZeroTimeout(callback) {
+        var id = callbacks.length;
+        callbacks.push(callback);
+        window.postMessage(message + id.toString(36), '*');
+
+        return id;
+      };
+
+      window.addEventListener('message', function setZeroTimeoutMessage(evt) {
+        // Skipping checking event source, retarded IE confused this window
+        // object with another in the presence of iframe
+        if (typeof evt.data !== 'string' ||
+            evt.data.substr(0, message.length) !== message/* ||
+            evt.source !== window */) {
+          return;
+        }
+
+        evt.stopImmediatePropagation();
+
+        var id = parseInt(evt.data.substr(message.length), 36);
+        if (!callbacks[id]) {
+          return;
+        }
+
+        callbacks[id]();
+        callbacks[id] = undefined;
+      }, true);
+
+      /* specify clearImmediate() here since we need the scope */
+      window.clearImmediate = function clearZeroTimeout(id) {
+        if (!callbacks[id]) {
+          return;
+        }
+
+        callbacks[id] = undefined;
+      };
+
+      return setZeroTimeout;
+    })() ||
+    // fallback
+    function setImmediateFallback(fn) {
+      window.setTimeout(fn, 0);
+    };
+  })();
+}
+
+if (!window.clearImmediate) {
+  window.clearImmediate = (function setupClearImmediate() {
+    return window.msClearImmediate ||
+    window.webkitClearImmediate ||
+    window.mozClearImmediate ||
+    window.oClearImmediate ||
+    // "clearZeroTimeout" is implement on the previous block ||
+    // fallback
+    function clearImmediateFallback(timer) {
+      window.clearTimeout(timer);
+    };
+  })();
+}
+
+(function(global) {
+
+  // Check if WordCloud can run on this browser
+  var isSupported = (function isSupported() {
+    var canvas = document.createElement('canvas');
+    if (!canvas || !canvas.getContext) {
+      return false;
+    }
+
+    var ctx = canvas.getContext('2d');
+    if (!ctx.getImageData) {
+      return false;
+    }
+    if (!ctx.fillText) {
+      return false;
+    }
+
+    if (!Array.prototype.some) {
+      return false;
+    }
+    if (!Array.prototype.push) {
+      return false;
+    }
+
+    return true;
+  }());
+
+  // Find out if the browser impose minium font size by
+  // drawing small texts on a canvas and measure it's width.
+  var minFontSize = (function getMinFontSize() {
+    if (!isSupported) {
+      return;
+    }
+
+    var ctx = document.createElement('canvas').getContext('2d');
+
+    // start from 20
+    var size = 20;
+
+    // two sizes to measure
+    var hanWidth, mWidth;
+
+    while (size) {
+      ctx.font = size.toString(10) + 'px sans-serif';
+      if ((ctx.measureText('\uFF37').width === hanWidth) &&
+          (ctx.measureText('m').width) === mWidth) {
+        return (size + 1);
+      }
+
+      hanWidth = ctx.measureText('\uFF37').width;
+      mWidth = ctx.measureText('m').width;
+
+      size--;
+    }
+
+    return 0;
+  })();
+
+  // Based on http://jsfromhell.com/array/shuffle
+  var shuffleArray = function shuffleArray(arr) {
+    for (var j, x, i = arr.length; i;
+      j = Math.floor(Math.random() * i),
+      x = arr[--i], arr[i] = arr[j],
+      arr[j] = x) {}
+    return arr;
+  };
+
+  var WordCloud = function WordCloud(elements, options) {
+    if (!isSupported) {
+      return;
+    }
+
+    if (!Array.isArray(elements)) {
+      elements = [elements];
+    }
+
+    elements.forEach(function(el, i) {
+      if (typeof el === 'string') {
+        elements[i] = document.getElementById(el);
+        if (!elements[i]) {
+          throw 'The element id specified is not found.';
+        }
+      } else if (!el.tagName && !el.appendChild) {
+        throw 'You must pass valid HTML elements, or ID of the element.';
+      }
+    });
+
+    /* Default values to be overwritten by options object */
+    var settings = {
+      list: [],
+      fontFamily: '"Trebuchet MS", "Heiti TC", "微軟正黑體", ' +
+                  '"Arial Unicode MS", "Droid Fallback Sans", sans-serif',
+      fontWeight: 'normal',
+      color: 'random-dark',
+      minSize: 0, // 0 to disable
+      weightFactor: 1,
+      clearCanvas: true,
+      backgroundColor: '#fff',  // opaque white = rgba(255, 255, 255, 1)
+
+      gridSize: 8,
+      origin: null,
+
+      drawMask: false,
+      maskColor: 'rgba(255,0,0,0.3)',
+      maskGapWidth: 0.3,
+
+      wait: 0,
+      abortThreshold: 0, // disabled
+      abort: function noop() {},
+
+      minRotation: - Math.PI / 2,
+      maxRotation: Math.PI / 2,
+
+      shuffle: true,
+      rotateRatio: 0.1,
+
+      shape: 'circle',
+      ellipticity: 0.65,
+
+      classes: null,
+
+      hover: null,
+      click: null
+    };
+
+    if (options) {
+      for (var key in options) {
+        if (key in settings) {
+          settings[key] = options[key];
+        }
+      }
+    }
+
+    /* Convert weightFactor into a function */
+    if (typeof settings.weightFactor !== 'function') {
+      var factor = settings.weightFactor;
+      settings.weightFactor = function weightFactor(pt) {
+        return pt * factor; //in px
+      };
+    }
+
+    /* Convert shape into a function */
+    if (typeof settings.shape !== 'function') {
+      switch (settings.shape) {
+        case 'circle':
+        /* falls through */
+        default:
+          // 'circle' is the default and a shortcut in the code loop.
+          settings.shape = 'circle';
+          break;
+
+        case 'cardioid':
+          settings.shape = function shapeCardioid(theta) {
+            return 1 - Math.sin(theta);
+          };
+          break;
+
+        /*
+
+        To work out an X-gon, one has to calculate "m",
+        where 1/(cos(2*PI/X)+m*sin(2*PI/X)) = 1/(cos(0)+m*sin(0))
+        http://www.wolframalpha.com/input/?i=1%2F%28cos%282*PI%2FX%29%2Bm*sin%28
+        2*PI%2FX%29%29+%3D+1%2F%28cos%280%29%2Bm*sin%280%29%29
+
+        Copy the solution into polar equation r = 1/(cos(t') + m*sin(t'))
+        where t' equals to mod(t, 2PI/X);
+
+        */
+
+        case 'diamond':
+        case 'square':
+          // http://www.wolframalpha.com/input/?i=plot+r+%3D+1%2F%28cos%28mod+
+          // %28t%2C+PI%2F2%29%29%2Bsin%28mod+%28t%2C+PI%2F2%29%29%29%2C+t+%3D
+          // +0+..+2*PI
+          settings.shape = function shapeSquare(theta) {
+            var thetaPrime = theta % (2 * Math.PI / 4);
+            return 1 / (Math.cos(thetaPrime) + Math.sin(thetaPrime));
+          };
+          break;
+
+        case 'triangle-forward':
+          // http://www.wolframalpha.com/input/?i=plot+r+%3D+1%2F%28cos%28mod+
+          // %28t%2C+2*PI%2F3%29%29%2Bsqrt%283%29sin%28mod+%28t%2C+2*PI%2F3%29
+          // %29%29%2C+t+%3D+0+..+2*PI
+          settings.shape = function shapeTriangle(theta) {
+            var thetaPrime = theta % (2 * Math.PI / 3);
+            return 1 / (Math.cos(thetaPrime) +
+                        Math.sqrt(3) * Math.sin(thetaPrime));
+          };
+          break;
+
+        case 'triangle':
+        case 'triangle-upright':
+          settings.shape = function shapeTriangle(theta) {
+            var thetaPrime = (theta + Math.PI * 3 / 2) % (2 * Math.PI / 3);
+            return 1 / (Math.cos(thetaPrime) +
+                        Math.sqrt(3) * Math.sin(thetaPrime));
+          };
+          break;
+
+        case 'pentagon':
+          settings.shape = function shapePentagon(theta) {
+            var thetaPrime = (theta + 0.955) % (2 * Math.PI / 5);
+            return 1 / (Math.cos(thetaPrime) +
+                        0.726543 * Math.sin(thetaPrime));
+          };
+          break;
+
+        case 'star':
+          settings.shape = function shapeStar(theta) {
+            var thetaPrime = (theta + 0.955) % (2 * Math.PI / 10);
+            if ((theta + 0.955) % (2 * Math.PI / 5) - (2 * Math.PI / 10) >= 0) {
+              return 1 / (Math.cos((2 * Math.PI / 10) - thetaPrime) +
+                          3.07768 * Math.sin((2 * Math.PI / 10) - thetaPrime));
+            } else {
+              return 1 / (Math.cos(thetaPrime) +
+                          3.07768 * Math.sin(thetaPrime));
+            }
+          };
+          break;
+      }
+    }
+
+    /* Make sure gridSize is a whole number and is not smaller than 4px */
+    settings.gridSize = Math.max(Math.floor(settings.gridSize), 4);
+
+    /* shorthand */
+    var g = settings.gridSize;
+    var maskRectWidth = g - settings.maskGapWidth;
+
+    /* normalize rotation settings */
+    var rotationRange = Math.abs(settings.maxRotation - settings.minRotation);
+    var minRotation = Math.min(settings.maxRotation, settings.minRotation);
+
+    /* information/object available to all functions, set when start() */
+    var grid, // 2d array containing filling information
+      ngx, ngy, // width and height of the grid
+      center, // position of the center of the cloud
+      maxRadius;
+
+    /* timestamp for measuring each putWord() action */
+    var escapeTime;
+
+    /* function for getting the color of the text */
+    var getTextColor;
+    function random_hsl_color(min, max) {
+      return 'hsl(' +
+        (Math.random() * 360).toFixed() + ',' +
+        (Math.random() * 30 + 70).toFixed() + '%,' +
+        (Math.random() * (max - min) + min).toFixed() + '%)';
+    }
+    switch (settings.color) {
+      case 'random-dark':
+        getTextColor = function getRandomDarkColor() {
+          return random_hsl_color(10, 50);
+        };
+        break;
+
+      case 'random-light':
+        getTextColor = function getRandomLightColor() {
+          return random_hsl_color(50, 90);
+        };
+        break;
+
+      default:
+        if (typeof settings.color === 'function') {
+          getTextColor = settings.color;
+        }
+        break;
+    }
+
+    /* function for getting the classes of the text */
+    var getTextClasses = null;
+    if (typeof settings.classes === 'function') {
+      getTextClasses = settings.classes;
+    }
+
+    /* Interactive */
+    var interactive = false;
+    var infoGrid = [];
+    var hovered;
+
+    var getInfoGridFromMouseTouchEvent =
+    function getInfoGridFromMouseTouchEvent(evt) {
+      var canvas = evt.currentTarget;
+      var rect = canvas.getBoundingClientRect();
+      var clientX;
+      var clientY;
+      /** Detect if touches are available */
+      if (evt.touches) {
+        clientX = evt.touches[0].clientX;
+        clientY = evt.touches[0].clientY;
+      } else {
+        clientX = evt.clientX;
+        clientY = evt.clientY;
+      }
+      var eventX = clientX - rect.left;
+      var eventY = clientY - rect.top;
+
+      var x = Math.floor(eventX * ((canvas.width / rect.width) || 1) / g);
+      var y = Math.floor(eventY * ((canvas.height / rect.height) || 1) / g);
+
+      return infoGrid[x][y];
+    };
+
+    var wordcloudhover = function wordcloudhover(evt) {
+      var info = getInfoGridFromMouseTouchEvent(evt);
+
+      if (hovered === info) {
+        return;
+      }
+
+      hovered = info;
+      if (!info) {
+        settings.hover(undefined, undefined, evt);
+
+        return;
+      }
+
+      settings.hover(info.item, info.dimension, evt);
+
+    };
+
+    var wordcloudclick = function wordcloudclick(evt) {
+      var info = getInfoGridFromMouseTouchEvent(evt);
+      if (!info) {
+        return;
+      }
+
+      settings.click(info.item, info.dimension, evt);
+      evt.preventDefault();
+    };
+
+    /* Get points on the grid for a given radius away from the center */
+    var pointsAtRadius = [];
+    var getPointsAtRadius = function getPointsAtRadius(radius) {
+      if (pointsAtRadius[radius]) {
+        return pointsAtRadius[radius];
+      }
+
+      // Look for these number of points on each radius
+      var T = radius * 8;
+
+      // Getting all the points at this radius
+      var t = T;
+      var points = [];
+
+      if (radius === 0) {
+        points.push([center[0], center[1], 0]);
+      }
+
+      while (t--) {
+        // distort the radius to put the cloud in shape
+        var rx = 1;
+        if (settings.shape !== 'circle') {
+          rx = settings.shape(t / T * 2 * Math.PI); // 0 to 1
+        }
+
+        // Push [x, y, t]; t is used solely for getTextColor()
+        points.push([
+          center[0] + radius * rx * Math.cos(-t / T * 2 * Math.PI),
+          center[1] + radius * rx * Math.sin(-t / T * 2 * Math.PI) *
+            settings.ellipticity,
+          t / T * 2 * Math.PI]);
+      }
+
+      pointsAtRadius[radius] = points;
+      return points;
+    };
+
+    /* Return true if we had spent too much time */
+    var exceedTime = function exceedTime() {
+      return ((settings.abortThreshold > 0) &&
+        ((new Date()).getTime() - escapeTime > settings.abortThreshold));
+    };
+
+    /* Get the deg of rotation according to settings, and luck. */
+    var getRotateDeg = function getRotateDeg() {
+      if (settings.rotateRatio === 0) {
+        return 0;
+      }
+
+      if (Math.random() > settings.rotateRatio) {
+        return 0;
+      }
+
+      if (rotationRange === 0) {
+        return minRotation;
+      }
+
+      return minRotation + Math.random() * rotationRange;
+    };
+
+    var getTextInfo = function getTextInfo(word, weight, rotateDeg) {
+      // calculate the acutal font size
+      // fontSize === 0 means weightFactor function wants the text skipped,
+      // and size < minSize means we cannot draw the text.
+      var debug = false;
+      var fontSize = settings.weightFactor(weight);
+      if (fontSize <= settings.minSize) {
+        return false;
+      }
+
+      // Scale factor here is to make sure fillText is not limited by
+      // the minium font size set by browser.
+      // It will always be 1 or 2n.
+      var mu = 1;
+      if (fontSize < minFontSize) {
+        mu = (function calculateScaleFactor() {
+          var mu = 2;
+          while (mu * fontSize < minFontSize) {
+            mu += 2;
+          }
+          return mu;
+        })();
+      }
+
+      var fcanvas = document.createElement('canvas');
+      var fctx = fcanvas.getContext('2d', { willReadFrequently: true });
+
+      fctx.font = settings.fontWeight + ' ' +
+        (fontSize * mu).toString(10) + 'px ' + settings.fontFamily;
+
+      // Estimate the dimension of the text with measureText().
+      var fw = fctx.measureText(word).width / mu;
+      var fh = Math.max(fontSize * mu,
+                        fctx.measureText('m').width,
+                        fctx.measureText('\uFF37').width) / mu;
+
+      // Create a boundary box that is larger than our estimates,
+      // so text don't get cut of (it sill might)
+      var boxWidth = fw + fh * 2;
+      var boxHeight = fh * 3;
+      var fgw = Math.ceil(boxWidth / g);
+      var fgh = Math.ceil(boxHeight / g);
+      boxWidth = fgw * g;
+      boxHeight = fgh * g;
+
+      // Calculate the proper offsets to make the text centered at
+      // the preferred position.
+
+      // This is simply half of the width.
+      var fillTextOffsetX = - fw / 2;
+      // Instead of moving the box to the exact middle of the preferred
+      // position, for Y-offset we move 0.4 instead, so Latin alphabets look
+      // vertical centered.
+      var fillTextOffsetY = - fh * 0.4;
+
+      // Calculate the actual dimension of the canvas, considering the rotation.
+      var cgh = Math.ceil((boxWidth * Math.abs(Math.sin(rotateDeg)) +
+                           boxHeight * Math.abs(Math.cos(rotateDeg))) / g);
+      var cgw = Math.ceil((boxWidth * Math.abs(Math.cos(rotateDeg)) +
+                           boxHeight * Math.abs(Math.sin(rotateDeg))) / g);
+      var width = cgw * g;
+      var height = cgh * g;
+
+      fcanvas.setAttribute('width', width);
+      fcanvas.setAttribute('height', height);
+
+      if (debug) {
+        // Attach fcanvas to the DOM
+        document.body.appendChild(fcanvas);
+        // Save it's state so that we could restore and draw the grid correctly.
+        fctx.save();
+      }
+
+      // Scale the canvas with |mu|.
+      fctx.scale(1 / mu, 1 / mu);
+      fctx.translate(width * mu / 2, height * mu / 2);
+      fctx.rotate(- rotateDeg);
+
+      // Once the width/height is set, ctx info will be reset.
+      // Set it again here.
+      fctx.font = settings.fontWeight + ' ' +
+        (fontSize * mu).toString(10) + 'px ' + settings.fontFamily;
+
+      // Fill the text into the fcanvas.
+      // XXX: We cannot because textBaseline = 'top' here because
+      // Firefox and Chrome uses different default line-height for canvas.
+      // Please read https://bugzil.la/737852#c6.
+      // Here, we use textBaseline = 'middle' and draw the text at exactly
+      // 0.5 * fontSize lower.
+      fctx.fillStyle = '#000';
+      fctx.textBaseline = 'middle';
+      fctx.fillText(word, fillTextOffsetX * mu,
+                    (fillTextOffsetY + fontSize * 0.5) * mu);
+
+      // Get the pixels of the text
+      var imageData = fctx.getImageData(0, 0, width, height).data;
+
+      if (exceedTime()) {
+        return false;
+      }
+
+      if (debug) {
+        // Draw the box of the original estimation
+        fctx.strokeRect(fillTextOffsetX * mu,
+                        fillTextOffsetY, fw * mu, fh * mu);
+        fctx.restore();
+      }
+
+      // Read the pixels and save the information to the occupied array
+      var occupied = [];
+      var gx = cgw, gy, x, y;
+      var bounds = [cgh / 2, cgw / 2, cgh / 2, cgw / 2];
+      while (gx--) {
+        gy = cgh;
+        while (gy--) {
+          y = g;
+          singleGridLoop: {
+            while (y--) {
+              x = g;
+              while (x--) {
+                if (imageData[((gy * g + y) * width +
+                               (gx * g + x)) * 4 + 3]) {
+                  occupied.push([gx, gy]);
+
+                  if (gx < bounds[3]) {
+                    bounds[3] = gx;
+                  }
+                  if (gx > bounds[1]) {
+                    bounds[1] = gx;
+                  }
+                  if (gy < bounds[0]) {
+                    bounds[0] = gy;
+                  }
+                  if (gy > bounds[2]) {
+                    bounds[2] = gy;
+                  }
+
+                  if (debug) {
+                    fctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                    fctx.fillRect(gx * g, gy * g, g - 0.5, g - 0.5);
+                  }
+                  break singleGridLoop;
+                }
+              }
+            }
+            if (debug) {
+              fctx.fillStyle = 'rgba(0, 0, 255, 0.5)';
+              fctx.fillRect(gx * g, gy * g, g - 0.5, g - 0.5);
+            }
+          }
+        }
+      }
+
+      if (debug) {
+        fctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
+        fctx.fillRect(bounds[3] * g,
+                      bounds[0] * g,
+                      (bounds[1] - bounds[3] + 1) * g,
+                      (bounds[2] - bounds[0] + 1) * g);
+      }
+
+      // Return information needed to create the text on the real canvas
+      return {
+        mu: mu,
+        occupied: occupied,
+        bounds: bounds,
+        gw: cgw,
+        gh: cgh,
+        fillTextOffsetX: fillTextOffsetX,
+        fillTextOffsetY: fillTextOffsetY,
+        fillTextWidth: fw,
+        fillTextHeight: fh,
+        fontSize: fontSize
+      };
+    };
+
+    /* Determine if there is room available in the given dimension */
+    var canFitText = function canFitText(gx, gy, gw, gh, occupied) {
+      // Go through the occupied points,
+      // return false if the space is not available.
+      var i = occupied.length;
+      while (i--) {
+        var px = gx + occupied[i][0];
+        var py = gy + occupied[i][1];
+
+        if (px >= ngx || py >= ngy || px < 0 || py < 0 || !grid[px][py]) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    /* Actually draw the text on the grid */
+    var drawText = function drawText(gx, gy, info, word, weight,
+                                     distance, theta, rotateDeg, attributes) {
+
+      var fontSize = info.fontSize;
+      var color;
+      if (getTextColor) {
+        color = getTextColor(word, weight, fontSize, distance, theta);
+      } else if (settings.color instanceof Array) {
+        color = settings.color.shift() || 'black'; // pass a array in setting, default 'black'
+      } else {
+        color = settings.color;
+      }
+
+      var classes;
+      if (getTextClasses) {
+        classes = getTextClasses(word, weight, fontSize, distance, theta);
+      } else {
+        classes = settings.classes;
+      }
+
+      var dimension;
+      var bounds = info.bounds;
+      dimension = {
+        x: (gx + bounds[3]) * g,
+        y: (gy + bounds[0]) * g,
+        w: (bounds[1] - bounds[3] + 1) * g,
+        h: (bounds[2] - bounds[0] + 1) * g
+      };
+
+      elements.forEach(function(el) {
+        if (el.getContext) {
+          var ctx = el.getContext('2d');
+          var mu = info.mu;
+
+          // Save the current state before messing it
+          ctx.save();
+          ctx.scale(1 / mu, 1 / mu);
+
+          ctx.font = settings.fontWeight + ' ' +
+                     (fontSize * mu).toString(10) + 'px ' + settings.fontFamily;
+          ctx.fillStyle = color;
+
+          // Translate the canvas position to the origin coordinate of where
+          // the text should be put.
+          ctx.translate((gx + info.gw / 2) * g * mu,
+                        (gy + info.gh / 2) * g * mu);
+
+          if (rotateDeg !== 0) {
+            ctx.rotate(- rotateDeg);
+          }
+
+          // Finally, fill the text.
+
+          // XXX: We cannot because textBaseline = 'top' here because
+          // Firefox and Chrome uses different default line-height for canvas.
+          // Please read https://bugzil.la/737852#c6.
+          // Here, we use textBaseline = 'middle' and draw the text at exactly
+          // 0.5 * fontSize lower.
+          ctx.textBaseline = 'middle';
+          ctx.fillText(word, info.fillTextOffsetX * mu,
+                             (info.fillTextOffsetY + fontSize * 0.5) * mu);
+
+          // The below box is always matches how <span>s are positioned
+          /* ctx.strokeRect(info.fillTextOffsetX, info.fillTextOffsetY,
+            info.fillTextWidth, info.fillTextHeight); */
+
+          // Restore the state.
+          ctx.restore();
+        } else {
+          // drawText on DIV element
+          var span = document.createElement('span');
+          var transformRule = '';
+          transformRule = 'rotate(' + (- rotateDeg / Math.PI * 180) + 'deg) ';
+          if (info.mu !== 1) {
+            transformRule +=
+              'translateX(-' + (info.fillTextWidth / 4) + 'px) ' +
+              'scale(' + (1 / info.mu) + ')';
+          }
+          var styleRules = {
+            'position': 'absolute',
+            'display': 'block',
+            'font': settings.fontWeight + ' ' +
+                    (fontSize * info.mu) + 'px ' + settings.fontFamily,
+            'left': ((gx + info.gw / 2) * g + info.fillTextOffsetX) + 'px',
+            'top': ((gy + info.gh / 2) * g + info.fillTextOffsetY) + 'px',
+            'width': info.fillTextWidth + 'px',
+            'height': info.fillTextHeight + 'px',
+            'lineHeight': fontSize + 'px',
+            'whiteSpace': 'nowrap',
+            'transform': transformRule,
+            'webkitTransform': transformRule,
+            'msTransform': transformRule,
+            'transformOrigin': '50% 40%',
+            'webkitTransformOrigin': '50% 40%',
+            'msTransformOrigin': '50% 40%'
+          };
+          if (color) {
+            styleRules.color = color;
+          }
+          span.textContent = word;
+          for (var cssProp in styleRules) {
+            span.style[cssProp] = styleRules[cssProp];
+          }
+          if (attributes) {
+            for (var attribute in attributes) {
+              span.setAttribute(attribute, attributes[attribute]);
+            }
+          }
+          if (classes) {
+            span.className += classes;
+          }
+          el.appendChild(span);
+        }
+      });
+    };
+
+    /* Help function to updateGrid */
+    var fillGridAt = function fillGridAt(x, y, drawMask, dimension, item) {
+      if (x >= ngx || y >= ngy || x < 0 || y < 0) {
+        return;
+      }
+
+      grid[x][y] = false;
+
+      if (drawMask) {
+        var ctx = elements[0].getContext('2d');
+        ctx.fillRect(x * g, y * g, maskRectWidth, maskRectWidth);
+      }
+
+      if (interactive) {
+        infoGrid[x][y] = { item: item, dimension: dimension };
+      }
+    };
+
+    /* Update the filling information of the given space with occupied points.
+       Draw the mask on the canvas if necessary. */
+    var updateGrid = function updateGrid(gx, gy, gw, gh, info, item) {
+      var occupied = info.occupied;
+      var drawMask = settings.drawMask;
+      var ctx;
+      if (drawMask) {
+        ctx = elements[0].getContext('2d');
+        ctx.save();
+        ctx.fillStyle = settings.maskColor;
+      }
+
+      var dimension;
+      if (interactive) {
+        var bounds = info.bounds;
+        dimension = {
+          x: (gx + bounds[3]) * g,
+          y: (gy + bounds[0]) * g,
+          w: (bounds[1] - bounds[3] + 1) * g,
+          h: (bounds[2] - bounds[0] + 1) * g
+        };
+      }
+
+      var i = occupied.length;
+      while (i--) {
+        fillGridAt(gx + occupied[i][0], gy + occupied[i][1],
+                   drawMask, dimension, item);
+      }
+
+      if (drawMask) {
+        ctx.restore();
+      }
+    };
+
+    /* putWord() processes each item on the list,
+       calculate it's size and determine it's position, and actually
+       put it on the canvas. */
+    var putWord = function putWord(item) {
+      var word, weight, attributes;
+      if (Array.isArray(item)) {
+        word = item[0];
+        weight = item[1];
+      } else {
+        word = item.word;
+        weight = item.weight;
+        attributes = item.attributes;
+      }
+      var rotateDeg = getRotateDeg();
+
+      // get info needed to put the text onto the canvas
+      var info = getTextInfo(word, weight, rotateDeg);
+
+      // not getting the info means we shouldn't be drawing this one.
+      if (!info) {
+        return false;
+      }
+
+      if (exceedTime()) {
+        return false;
+      }
+
+      // Skip the loop if we have already know the bounding box of
+      // word is larger than the canvas.
+      var bounds = info.bounds;
+      if ((bounds[1] - bounds[3] + 1) > ngx ||
+        (bounds[2] - bounds[0] + 1) > ngy) {
+        return false;
+      }
+
+      // Determine the position to put the text by
+      // start looking for the nearest points
+      var r = maxRadius + 1;
+
+      var tryToPutWordAtPoint = function(gxy) {
+        var gx = Math.floor(gxy[0] - info.gw / 2);
+        var gy = Math.floor(gxy[1] - info.gh / 2);
+        var gw = info.gw;
+        var gh = info.gh;
+
+        // If we cannot fit the text at this position, return false
+        // and go to the next position.
+        if (!canFitText(gx, gy, gw, gh, info.occupied)) {
+          return false;
+        }
+
+        // Actually put the text on the canvas
+        drawText(gx, gy, info, word, weight,
+                 (maxRadius - r), gxy[2], rotateDeg, attributes);
+
+        // Mark the spaces on the grid as filled
+        updateGrid(gx, gy, gw, gh, info, item);
+
+        // Return true so some() will stop and also return true.
+        return true;
+      };
+
+      while (r--) {
+        var points = getPointsAtRadius(maxRadius - r);
+
+        if (settings.shuffle) {
+          points = [].concat(points);
+          shuffleArray(points);
+        }
+
+        // Try to fit the words by looking at each point.
+        // array.some() will stop and return true
+        // when putWordAtPoint() returns true.
+        // If all the points returns false, array.some() returns false.
+        var drawn = points.some(tryToPutWordAtPoint);
+
+        if (drawn) {
+          // leave putWord() and return true
+          return true;
+        }
+      }
+      // we tried all distances but text won't fit, return false
+      return false;
+    };
+
+    /* Send DOM event to all elements. Will stop sending event and return
+       if the previous one is canceled (for cancelable events). */
+    var sendEvent = function sendEvent(type, cancelable, detail) {
+      if (cancelable) {
+        return !elements.some(function(el) {
+          var evt = document.createEvent('CustomEvent');
+          evt.initCustomEvent(type, true, cancelable, detail || {});
+          return !el.dispatchEvent(evt);
+        }, this);
+      } else {
+        elements.forEach(function(el) {
+          var evt = document.createEvent('CustomEvent');
+          evt.initCustomEvent(type, true, cancelable, detail || {});
+          el.dispatchEvent(evt);
+        }, this);
+      }
+    };
+
+    /* Start drawing on a canvas */
+    var start = function start() {
+      // For dimensions, clearCanvas etc.,
+      // we only care about the first element.
+      var canvas = elements[0];
+
+      if (canvas.getContext) {
+        ngx = Math.floor(canvas.width / g);
+        ngy = Math.floor(canvas.height / g);
+      } else {
+        var rect = canvas.getBoundingClientRect();
+        ngx = Math.floor(rect.width / g);
+        ngy = Math.floor(rect.height / g);
+      }
+
+      // Sending a wordcloudstart event which cause the previous loop to stop.
+      // Do nothing if the event is canceled.
+      if (!sendEvent('wordcloudstart', true)) {
+        return;
+      }
+
+      // Determine the center of the word cloud
+      center = (settings.origin) ?
+        [settings.origin[0]/g, settings.origin[1]/g] :
+        [ngx / 2, ngy / 2];
+
+      // Maxium radius to look for space
+      maxRadius = Math.floor(Math.sqrt(ngx * ngx + ngy * ngy));
+
+      /* Clear the canvas only if the clearCanvas is set,
+         if not, update the grid to the current canvas state */
+      grid = [];
+
+      var gx, gy, i;
+      if (!canvas.getContext || settings.clearCanvas) {
+        elements.forEach(function(el) {
+          if (el.getContext) {
+            var ctx = el.getContext('2d');
+            ctx.fillStyle = settings.backgroundColor;
+            ctx.clearRect(0, 0, ngx * (g + 1), ngy * (g + 1));
+            ctx.fillRect(0, 0, ngx * (g + 1), ngy * (g + 1));
+          } else {
+            el.textContent = '';
+            el.style.backgroundColor = settings.backgroundColor;
+          }
+        });
+
+        /* fill the grid with empty state */
+        gx = ngx;
+        while (gx--) {
+          grid[gx] = [];
+          gy = ngy;
+          while (gy--) {
+            grid[gx][gy] = true;
+          }
+        }
+      } else {
+        /* Determine bgPixel by creating
+           another canvas and fill the specified background color. */
+        var bctx = document.createElement('canvas').getContext('2d');
+
+        bctx.fillStyle = settings.backgroundColor;
+        bctx.fillRect(0, 0, 1, 1);
+        var bgPixel = bctx.getImageData(0, 0, 1, 1).data;
+
+        /* Read back the pixels of the canvas we got to tell which part of the
+           canvas is empty.
+           (no clearCanvas only works with a canvas, not divs) */
+        var imageData =
+          canvas.getContext('2d').getImageData(0, 0, ngx * g, ngy * g).data;
+
+        gx = ngx;
+        var x, y;
+        while (gx--) {
+          grid[gx] = [];
+          gy = ngy;
+          while (gy--) {
+            y = g;
+            singleGridLoop: while (y--) {
+              x = g;
+              while (x--) {
+                i = 4;
+                while (i--) {
+                  if (imageData[((gy * g + y) * ngx * g +
+                                 (gx * g + x)) * 4 + i] !== bgPixel[i]) {
+                    grid[gx][gy] = false;
+                    break singleGridLoop;
+                  }
+                }
+              }
+            }
+            if (grid[gx][gy] !== false) {
+              grid[gx][gy] = true;
+            }
+          }
+        }
+
+        imageData = bctx = bgPixel = undefined;
+      }
+
+      // fill the infoGrid with empty state if we need it
+      if (settings.hover || settings.click) {
+
+        interactive = true;
+
+        /* fill the grid with empty state */
+        gx = ngx + 1;
+        while (gx--) {
+          infoGrid[gx] = [];
+        }
+
+        if (settings.hover) {
+          canvas.addEventListener('mousemove', wordcloudhover);
+        }
+
+        if (settings.click) {
+          canvas.addEventListener('click', wordcloudclick);
+          canvas.addEventListener('touchstart', wordcloudclick);
+          canvas.addEventListener('touchend', function (e) {
+            e.preventDefault();
+          });
+          canvas.style.webkitTapHighlightColor = 'rgba(0, 0, 0, 0)';
+        }
+
+        canvas.addEventListener('wordcloudstart', function stopInteraction() {
+          canvas.removeEventListener('wordcloudstart', stopInteraction);
+
+          canvas.removeEventListener('mousemove', wordcloudhover);
+          canvas.removeEventListener('click', wordcloudclick);
+          hovered = undefined;
+        });
+      }
+
+      i = 0;
+      var loopingFunction, stoppingFunction;
+      if (settings.wait !== 0) {
+        loopingFunction = window.setTimeout;
+        stoppingFunction = window.clearTimeout;
+      } else {
+        loopingFunction = window.setImmediate;
+        stoppingFunction = window.clearImmediate;
+      }
+
+      var addEventListener = function addEventListener(type, listener) {
+        elements.forEach(function(el) {
+          el.addEventListener(type, listener);
+        }, this);
+      };
+
+      var removeEventListener = function removeEventListener(type, listener) {
+        elements.forEach(function(el) {
+          el.removeEventListener(type, listener);
+        }, this);
+      };
+
+      var anotherWordCloudStart = function anotherWordCloudStart() {
+        removeEventListener('wordcloudstart', anotherWordCloudStart);
+        stoppingFunction(timer);
+      };
+
+      addEventListener('wordcloudstart', anotherWordCloudStart);
+
+      var timer = loopingFunction(function loop() {
+        if (i >= settings.list.length) {
+          stoppingFunction(timer);
+          sendEvent('wordcloudstop', false);
+          removeEventListener('wordcloudstart', anotherWordCloudStart);
+
+          return;
+        }
+        escapeTime = (new Date()).getTime();
+        var drawn = putWord(settings.list[i]);
+        var canceled = !sendEvent('wordclouddrawn', true, {
+          item: settings.list[i], drawn: drawn });
+        if (exceedTime() || canceled) {
+          stoppingFunction(timer);
+          settings.abort();
+          sendEvent('wordcloudabort', false);
+          sendEvent('wordcloudstop', false);
+          removeEventListener('wordcloudstart', anotherWordCloudStart);
+          return;
+        }
+        i++;
+        timer = loopingFunction(loop, settings.wait);
+      }, settings.wait);
+    };
+
+    // All set, start the drawing
+    start();
+  };
+
+  WordCloud.isSupported = isSupported;
+  WordCloud.minFontSize = minFontSize;
+
+  // Expose the library as an AMD module
+  if (typeof define === 'function' && define.amd) {
+    define('wordcloud', [], function() { return WordCloud; });
+  } else if (typeof module !== 'undefined' && module.exports) {
+    module.exports = WordCloud;
+  } else {
+    global.WordCloud = WordCloud;
+  }
+
+})(this); //jshint ignore:line
+</script>
+<script>// create element
+function newlabel(el){
+  var newDiv = document.createElement("div");
+  var newSpan = document.createElement("span");
+  newDiv.id = 'wcLabel';
+  newSpan.id = "wcSpan";
+  el.appendChild(newDiv);
+  document.getElementById("wcLabel").appendChild(newSpan);
+}
+
+// hover function
+function cv_handleHover(item, dimension, evt) {
+  var el = document.getElementById("wcLabel");
+  if (!item) {
+    el.setAttribute('hidden', true);
+
+    return;
+  }
+
+  el.removeAttribute('hidden');
+  // console.log(evt.srcElement.offsetLeft);
+
+  el.style.left = dimension.x + evt.srcElement.offsetLeft + 'px';
+  el.style.top = dimension.y + evt.srcElement.offsetTop + 'px';
+  el.style.width = dimension.w + 'px';
+  el.style.height = dimension.h + 'px';
+
+  this.hoverDimension = dimension;
+
+  document.getElementById("wcSpan").setAttribute(
+    'data-l10n-args', JSON.stringify({ word: item[0], count: item[1] }));
+  document.getElementById("wcSpan").innerHTML =item[0]+":" + item[1];
+
+}
+
+function updateCanvasMask(maskCanvas) {
+    var ctx = maskCanvas.getContext('2d');
+    var imageData = ctx.getImageData(
+        0, 0, maskCanvas.width, maskCanvas.height);
+    var newImageData = ctx.createImageData(imageData);
+
+    var toneSum = 0;
+    var toneCnt = 0;
+    for (var i = 0; i < imageData.data.length; i += 4) {
+        var alpha = imageData.data[i + 3];
+        if (alpha > 128) {
+            var tone = imageData.data[i]
+                + imageData.data[i + 1]
+                + imageData.data[i + 2];
+            toneSum += tone;
+            ++toneCnt;
+        }
+    }
+    var threshold = toneSum / toneCnt;
+
+    for (var i = 0; i < imageData.data.length; i += 4) {
+        var tone = imageData.data[i]
+            + imageData.data[i + 1]
+            + imageData.data[i + 2];
+        var alpha = imageData.data[i + 3];
+
+        if (alpha < 128 || tone > threshold) {
+            // Area not to draw
+            newImageData.data[i] = 0;
+            newImageData.data[i + 1] = 0;
+            newImageData.data[i + 2] = 0;
+            newImageData.data[i + 3] = 0;
+        }
+        else {
+            // Area to draw
+            // The color must be same with backgroundColor
+            newImageData.data[i] = 255;
+            newImageData.data[i + 1] = 255;
+            newImageData.data[i + 2] = 255;
+            newImageData.data[i + 3] = 255;
+        }
+    }
+
+    ctx.putImageData(newImageData, 0, 0);
+    console.log(maskCanvas.toDataURL());
+}
+
+
+
+//mask function
+function maskInit(el,x){
+  console.log(1)
+  str = x.figBase64;
+  //console.log(str)
+  var newImg = new Image();
+  newImg.src = str;
+  newImg.style.position = 'absolute';
+  newImg.style.left = 0;
+  // console.log(el.clientHeight);
+  newImg.width = el.clientWidth;
+  newImg.height = el.clientHeight;
+  // maskCanvas = init(el, x, newImg);
+  vvalue = 128
+
+  ctx = el.firstChild.getContext('2d');
+
+                ctx.drawImage(newImg, 0, 0, canvas.width, canvas.height);
+                updateCanvasMask(ctx);
+
+
+
+
+
+            WordCloud(el.firstChild, { list: listData,
+                  fontFamily: x.fontFamily,
+                  fontWeight: x.fontWeight,
+                  color: x.color,
+                  minSize: x.minSize,
+                  weightFactor: x.weightFactor,
+                  backgroundColor: x.backgroundColor,
+                  gridSize: x.gridSize,
+                  minRotation: x.minRotation,
+                  maxRotation: x.maxRotation,
+                  shuffle: x.shuffle,
+                  shape: x.shape,
+                  rotateRatio: x.rotateRatio,
+                  ellipticity: x.ellipticity,
+                  clearCanvas: false,
+                  drawMask: true,
+                  hover: x.hover || cv_handleHover,
+                  abortThreshold: 3000
+                  });
+}
+
+</script>
+<script>HTMLWidgets.widget({
+
+  name: 'wordcloud2',
+
+  type: 'output',
+
+  initialize: function(el, width, height) {
+    var newCanvas = document.createElement("canvas");
+    newCanvas.height = height;
+    newCanvas.width = width;
+    newCanvas.id = "canvas";
+
+    el.appendChild(newCanvas);
+    newlabel(el);
+    return(el.firstChild);
+  },
+  renderValue: function(el, x, instance) {
+  // parse gexf data
+        listData=[];
+        for(var i=0; i<x.word.length; i++){
+          listData.push([x.word[i], x.freq[i]]);
+        }
+     if(x.figBase64){
+
+        maskInit(el,x);
+        console.log(3)
+
+      }else{
+        WordCloud(el.firstChild, { list: listData,
+                        fontFamily: x.fontFamily,
+                        fontWeight: x.fontWeight,
+                        color: x.color,
+                        minSize: x.minSize,
+                        weightFactor: x.weightFactor,
+                        backgroundColor: x.backgroundColor,
+                        gridSize: x.gridSize,
+                        minRotation: x.minRotation,
+                        maxRotation: x.maxRotation,
+                        shuffle: x.shuffle,
+                        shape: x.shape,
+                        rotateRatio: x.rotateRatio,
+                        ellipticity: x.ellipticity,
+                        drawMask: x.drawMask,
+                        maskColor: x.maskColor,
+                        maskGapWidth: x.maskGapWidth,
+                        hover: x.hover || cv_handleHover
+                        });
+      }
+    },
+      resize: function(el, width, height) {
+      }
+
+});
+</script>
+
+</head>
+<body style="background-color: white;">
+<div id="htmlwidget_container">
+  <div class="wordcloud2 html-widget html-fill-item" id="htmlwidget-fdea2e1513179b16fa12" style="width:960px;height:500px;"></div>
+</div>
+<script type="application/json" data-for="htmlwidget-fdea2e1513179b16fa12">{"x":{"word":["EVOLUTION","NATURAL SELECTION","EXPLANATION","ADAPTATION","FITNESS","SPECIES","ECOLOGY","CULTURAL EVOLUTION","ALTRUISM","FUNCTION","NICHE CONSTRUCTION","COOPERATION","HOMOLOGY","TELEOLOGY","ADAPTATIONISM","EVOLUTIONARY PSYCHOLOGY","GROUP SELECTION","INFORMATION","SOCIOBIOLOGY","DEVELOPMENT","NATURAL KINDS","COMPLEXITY","MODELS","MORALITY","TELEOSEMANTICS","CAUSATION","COGNITION","DARWIN","EVOLUTIONARY EPISTEMOLOGY","INDIVIDUALITY","ETHICS","REDUCTIONISM","SELECTION","MECHANISM","CONTINGENCY","EVOLUTIONARY THEORY","GAME THEORY","PHILOSOPHY OF BIOLOGY","PHYLOGENY","PLURALISM","TAXONOMY","BIODIVERSITY","EVOLUTIONARY ETHICS","IDEALIZATION","LEVELS OF SELECTION","SYSTEMATICS","CLASSIFICATION","MODELING","REDUCTION","CLADISTICS","CONSCIOUSNESS","EVOLUTIONARY BIOLOGY","MULTI-LEVEL SELECTION","ORGANISM","PROBABILITY","CONSERVATION","DRIFT","ESSENTIALISM","INTENTIONALITY","MICROBIOME","MORPHOLOGY","OPTIMALITY","REPRESENTATION","EMERGENCE","EVOLVABILITY","HUMAN EVOLUTION","INCLUSIVE FITNESS","LANGUAGE","MECHANISTIC EXPLANATION","MODULARITY","MULTICELLULARITY","NEUROSCIENCE","PHYLOGENETICS","POPULATION GENETICS","TREE OF LIFE","BIOLOGY","CULTURE","EVO-DEVO","KIN SELECTION","LEARNING","MACROEVOLUTION","MAJOR TRANSITIONS","METHODOLOGY","NATURALISTIC FALLACY","ONTOLOGY","PHILOSOPHY OF SCIENCE","SOCIAL LEARNING","SPECIATION","THEORY","UNITS OF SELECTION","BIOLOGICAL INDIVIDUALITY","DARWINISM","EPIGENETICS","EVOLUTIONARY DEVELOPMENTAL BIOLOGY","EVOLUTIONARY GAME THEORY","GENETICS","HERITABILITY","HEURISTICS","HIERARCHY","HISTORY","IMITATION","MECHANISMS","MICROBIOLOGY","MULTILEVEL SELECTION","NORMS","PHILOSOPHY OF ECOLOGY","REALISM","ADAPTIVE LANDSCAPE","CAUSALITY","CHANCE","DEVELOPMENTAL BIOLOGY","DEVELOPMENTAL SYSTEMS THEORY","EPISTEMOLOGY","ETHOLOGY","EXTENDED EVOLUTIONARY SYNTHESIS","GENE","GENES","GENETIC INFORMATION","LANGUAGE EVOLUTION","MOLECULAR BIOLOGY","PARSIMONY","PHENOTYPE","PUNISHMENT","SYMBIOSIS","SYSTEMS BIOLOGY","BEHAVIOUR","BIOLOGICAL LAWS","CANCER","CONSTRAINT","DEFINITION","ECOSYSTEM","EMOTIONS","ENTROPY","ENVIRONMENT","ENVIRONMENTAL ETHICS","ERNST MAYR","EVOLUTIONARY CONTINGENCY","EXPERIMENT","FREE ENERGY PRINCIPLE","HOLOBIONT","LATERAL GENE TRANSFER","METAPHOR","MORAL PSYCHOLOGY","NATURALISM","NEO-DARWINISM","OPTIMIZATION","PLASTICITY","RACE","STABILITY","UNIFICATION","ABSTRACTION","ANIMAL COGNITION","ARISTOTLE","ARTIFICIAL LIFE","BACTERIA","CLADISM","COMPARATIVE PSYCHOLOGY","COMPETITION","CONSTRAINTS","DISEASE","EMOTION","EVOLUTIONARY TRANSITIONS","EXTINCTION","FORMAL DARWINISM","INDIVIDUAL","INDIVIDUALS","INHERITANCE","INNATENESS","INNOVATION","INTEGRATION","LAMARCKISM","MENTAL REPRESENTATION","MODEL ORGANISMS","MODERN SYNTHESIS","MONOPHYLY","PREDICTION","PROGRESS","PROPENSITY","REPLICATION","REPLICATOR","ROBUSTNESS","SEXUAL SELECTION","SIGNALING","SOCIAL NORMS","ANTHROPOCENTRISM","ANTHROPOMORPHISM","BIOLOGICAL FUNCTION","CAUSAL EXPLANATION","COMMUNITY","CONVERGENCE","CULTURAL TRANSMISSION","DESIGN","DIAGRAM","ECONOMICS","EPIGENETIC INHERITANCE","EVOLUTION OF LANGUAGE","EVOLUTION OF MORALITY","EVOLUTIONARY EXPLANATION","FUNCTIONALISM","FUNCTIONS","GENETIC","GENOTYPE","HEREDITY","HOLISM","INVASIVE SPECIES","ISLAND BIOGEOGRAPHY","LIFE","METAETHICS","METAPHYSICS","MODEL","NATURAL HISTORY","NORMATIVITY","NOVELTY","ORGANIZATION","ORIGIN OF LIFE","PALEOBIOLOGY","POPULATION","POPULATION BIOLOGY","PRISONER'S DILEMMA","RATIONALITY","RECIPROCAL CAUSATION","REGULATION","REPRODUCTION","SELF-ORGANIZATION","SIMULATION","SPECIFICITY","STATISTICS","THEORY OF MIND","TYPOLOGY","VARIATION","ACTIVE INFERENCE","AFFORDANCES","ANALOGY","ANATOMY","ANIMAL WELFARE","ARBITRARINESS","BEHAVIOR","BIOLOGICAL FUNCTIONS","CAUSE","CHIMPANZEES","CLADE","CLASS","CLIMATE CHANGE","COEVOLUTION","COGNITIVE EVOLUTION","COGNITIVE SCIENCE","COMMUNITY ECOLOGY","CONFIRMATION","CONTROL","CREATIONISM","DARWINIAN POPULATIONS","DE-EXTINCTION","DISPOSITIONS","ECOLOGICAL NICHE","ECOSYSTEM ENGINEERING","ELIMINATIVISM","EMBODIED COGNITION","EMPATHY","EPIGENETIC","EVIDENCE","EVOLUTION OF COGNITION","EXTENDED PHENOTYPE","FINAL CAUSE","FOLK PSYCHOLOGY","GENETIC DETERMINISM","GENOMICS","GOULD","HANDICAP PRINCIPLE","HUMAN NATURE","IMMUNOLOGY","INFORMATION THEORY","INVARIANCE","INVASION BIOLOGY","KNOWLEDGE","KOCH’S POSTULATES","M. RUSE","MAYR","MEANING","MILLIKAN","MORAL REALISM","MULTIPLE REALIZATION","NECESSITY","NEUROBIOLOGY","NOMENCLATURE","OBJECTIVITY","OBSERVATION","PALEONTOLOGY","PHENOMENAL CONSCIOUSNESS","PHYLOGENETIC SYSTEMATICS","POLYMORPHISM","POPPER","PROPER FUNCTION","QUANTITATIVE GENETICS","REASONING","RICHARD LEVINS","RUSE","SCIENCE","SCIENTIFIC PRACTICE","SEMIOTICS","SENTIENCE","SEWALL WRIGHT","SEX","SOCIAL COGNITION","SOCIAL EVOLUTION","SPANDRELS","SPECIES CONCEPTS","SPECIES SELECTION","STAG HUNT","STASIS","SYNTAX","TAUTOLOGY","TESTABILITY","TRANSPOSABLE ELEMENTS","UNDERDETERMINATION","WRIGHT","ADAM SMITH","ANIMAL CONSCIOUSNESS","ART","ASTROBIOLOGY","AUTONOMY","BEHAVIORAL ECOLOGY","BELIEF","BIOLOGICAL AUTONOMY","BIOLOGICAL DESIGN","BIOLOGICAL INFORMATION","BUFFON","CARE ETHICS","CELL BIOLOGY","CHARLES DARWIN","COGNITIVE ARCHITECTURE","COGNITIVE ETHOLOGY","COHERENCE","COLLABORATION","COMPARATIVE BIOLOGY","COMPLEX SYSTEMS","CONCEPTS","CONSERVATION BIOLOGY","COUNTERFACTUALS","COVID-19","CULTURAL SELECTION","DEFINITION OF LIFE","DENSITY DEPENDENCE","DETERMINISM","DEVELOPMENTAL PLASTICITY","DOMINANCE","DRETSKE","DUAL INHERITANCE THEORY","EMBRYOLOGY","EMPIRICISM","ENVIRONMENTAL COMPLEXITY THESIS","EPIDEMIOLOGY","EPISTASIS","EQUILIBRIUM","ERNST HAECKEL","EVIDENCE-BASED MEDICINE","EVOLUTIONARY MODELS","EVOLUTIONARY NOVELTY","EVOLUTIONARY PROGRESS","EVOLUTIONARY SYNTHESIS","EXTENDED COGNITION","FISHER","FITNESS LANDSCAPES","FUNCTIONAL EXPLANATION","GENE CONCEPTS","GENE REGULATORY NETWORKS","GENETIC DRIFT","GENOMIC IMPRINTING","GRAMMAR","HAMILTON’S RULE","HELICOBACTER PYLORI","HEURISTIC","HISTORICITY","HOMEOSTASIS","HORIZONTAL GENE TRANSFER","HULL","HUMAN BEHAVIOR","IDENTITY","IMMUNE SYSTEM","INDETERMINISM","INDIVIDUAL DIFFERENCES","INDIVIDUAL SELECTION","INSTINCT","INTELLIGENT DESIGN","INTENSION","INTERPRETATION","JUNK DNA","LAWS","LEVELS","LIKELIHOOD","MAJOR EVOLUTIONARY TRANSITIONS","MALFUNCTION","MARK OF THE COGNITIVE","MATE CHOICE","MEME","MEMES","MENDEL","MENTAL TIME TRAVEL","METABOLISM","METAGENOMICS","MICROBES","MIND","MIRROR SELF-RECOGNITION","MODELLING","MOLECULAR MACHINES","MORAL NORMS","MOTIVATION","MUTUAL INFORMATION","NATURAL SYSTEM","NATURE","NETWORKS","NEURAL NETWORKS","NEURAL PLASTICITY","NEURAL SELECTION","NEUTRAL THEORY","NEUTRALITY","NICHE","NO FREE LUNCH THEOREMS","NULL HYPOTHESIS","ONTOGENY","PAIN","PARTS","PERCEPTION","PHENOTYPIC PLASTICITY","PHILOSOPHY","PHILOSOPHY OF MIND","PHYLOGENETIC TREES","PHYSIOLOGY","PLAY","POPULATION THINKING","PREADAPTATION","PREFRONTAL CORTEX","PRICE'S EQUATION","PRIOR PROBABILITIES","PROKARYOTES","PROXIMATE CAUSE","RECURSION","RELATEDNESS","RELIABILITY","RESTORATION","REVERSE ENGINEERING","SCALE","SCIENTIFIC EXPLANATION","SELECTED EFFECTS THEORY","SELFISH GENE","SELFISHNESS","SEMANTIC INFORMATION","SEMANTIC VIEW OF THEORIES","SHIFTING BALANCE THEORY","SIMILARITY","SOCIALITY","SPECIES PROBLEM","STATISTICAL EXPLANATION","STATISTICALISM","STOCHASTICITY","STRATEGIC GENE","STRUCTURALISM","SUPERVENIENCE","SYMBOL","SYNTHETIC BIOLOGY","TEMPORAL STABILITY","TRADEOFFS","TRANSITION MARKER","TRENDS","ULTIMATE CAUSE","UNCERTAINTY","UNLIMITED ASSOCIATIVE LEARNING","WADDINGTON","ABDUCTION","ACCURACY","ACQUIRED CHARACTERS","ADAPTIVE LANDSCAPES","ADAPTIVE RADIATION","ADAPTIVE THINKING","ADDITIVITY","AGENCY","AGING","ALLOSTATIC CONTROL","ANALYSIS OF VARIANCE","ANCESTRY","ANIMAL","ANIMAL BEHAVIOR","ANIMAL MINDS","ANIMAL MORALITY","ANIMALS","ANTHROPOGENIC","ANTIREPRESENTATIONALISM","ARABIDOPSIS THALIANA","ARCHAEA","ARCHETYPE","AUTISM","AUTOCATALYSIS","AUTOIMMUNITY","AVERAGING FALLACY","AWARENESS","BACKGROUND CONDITIONS","BALANCE OF NATURE","BALDWIN EFFECT","BASIC EMOTIONS","BAYESIANISM","BEHAVIOURAL ECOLOGY","BIAS","BIOCHEMISTRY","BIOFILM","BIOFILMS","BIOGEOGRAPHY","BIOLOGICAL COMPLEXITY","BIOLOGICAL SPECIES","BIOLOGICAL SPECIES CONCEPT","BIOMEDICINE","BIONICS","BIRDSONG","BODY","BRAIN","BRANDON","CANALIZATION","CAUSAL COGNITION","CAUSAL MECHANISMS","CAUSAL MODELS","CAUSAL REASONING","CAUSAL RELEVANCE","CAUSAL ROLE","CAUSAL STRENGTH","CLASSES","CO-EVOLUTION","CODES","COGNITIVE ARCHAEOLOGY","COGNITIVE BIAS","COGNITIVE DEVELOPMENT","COGNITIVE NEUROSCIENCE","COGNITIVISM","COMMON ANCESTRY","COMMUNICATION","COMMUNITIES","COMPLEMENTARITY","COMPLEXITY THEORY","COMPOSITIONAL BIOLOGY","COMPUTER SIMULATION","CONCEPTUAL ANALYSIS","CONSTRUCTIVE NEUTRAL EVOLUTION","CONSTRUCTIVISM","CONTEXTUAL CONSISTENCY","CONVENTION","CORRELATION","COSMOLOGY","CRISPR-CAS","CRISPR-CAS SYSTEMS","CULTURAL ATTRACTION","CULTURAL INHERITANCE","CUMULATIVE CULTURE","CYBERNETICS","CYTOLOGY","DATA","DAWKINS","DECEPTION","DECISION THEORY","DECOMPOSITION","DEDUCTION","DEFENDING BIODIVERSITY","DEFINING PROPERTY","DEMOGRAPHY","DEPRESSION","DESCRIPTIVISM","DEVELOPMENTAL BIAS","DIAGRAMS","DIRECT OPTIMIZATION","DIRECTIONALITY","DISCOVERY","DIVERSITY","DNA","DOMAIN SPECIFICITY","DOWNWARD CAUSATION","DYNAMICAL SYSTEMS","DYNAMICAL SYSTEMS THEORY","DYNAMICS","E. O. WILSON","EARLY NERVOUS SYSTEMS","ECOLOGICAL COMMUNITIES","ECOLOGICAL MODELING","ECOLOGICAL PSYCHOLOGY","ECOSYSTEMS","EMBEDDED COGNITION","EMERGENTISM","ENACTIVISM","ENVIRONMENTAL","ENVIRONMENTAL AESTHETICS","EPIGENESIS","EPIGENETIC LANDSCAPE","ERROR THEORY","ESS","ETHICAL NATURALISM","ETHICAL SUBJECTIVISM","ETIOLOGICAL THEORY","EUSOCIALITY","EVIDENTIAL INTEGRATION","EVOLUTION BY NATURAL SELECTION","EVOLUTION OF COMPLEXITY","EVOLUTION OF DOMINANCE","EVOLUTION OF MUSIC","EVOLUTIONARY AESTHETICS","EVOLUTIONARY ECONOMICS","EVOLUTIONARY FUNCTION","EVOLUTIONARY GENETICS","EVOLUTIONARY INDIVIDUALITY","EVOLUTIONARY METAETHICS","EVOLUTIONARY MISMATCH","EVOLUTIONARY ORIGINS","EVOLUTIONARY PSYCHIATRY","EVOLUTIONARY TRANSITIONS IN INDIVIDUALITY","EXAPTATION","EXPERIMENTAL ECONOMICS","EXPERIMENTAL EVOLUTION","EXPERIMENTS","EXTENDED EVOLUTIONARY SYNTHESIS (EES)","EXTENDED MIND","EXTRAPOLATION","EXTRATERRESTRIAL INTELLIGENCE","FACIAL EXPRESSION","FALSIFIABILITY","FEEDBACK","FINITE POPULATIONS","FITNESS MAXIMISATION","FORCES","FORMAL DARWINISM PROJECT","FRANCIS GALTON","FRANS DE WAAL","FREQUENCY-DEPENDENCE","FREQUENCY-DEPENDENT SELECTION","GAVRILETS","GENDER","GENE DUPLICATION","GENE FLOW","GENERALIZATION","GENERATIVE ENTRENCHMENT","GENES FOR","GENETIC ASSIMILATION","GENETIC ENGINEERING","GENETIC NETWORK","GENETIC PROGRAM","GENETIC PROGRAMS","GENETIC REPRESENTATION","GENETIC TRAIT","GEOMETRIC MEAN","GHISELIN","GOAL-DIRECTEDNESS","GOD","GODFREY-SMITH","GRAPH THEORY","GRICEAN COMMUNICATION","HEALTH","HENNIG SOCIETY","HETEROGENEITY","HIERARCHICAL SELECTION","HIERARCHIES","HISTORICAL EXPLANATION","HISTORICAL SCIENCE","HISTORIOGRAPHY OF SCIENCE","HISTORY OF SCIENCE","HOMININ EVOLUTION","HOMO SAPIENS","HOMOPLASY","HUMAN","HUMAN BEHAVIORAL ECOLOGY","HUMAN CULTURE","HUMAN GENOME PROJECT","HUMAN SOCIOBIOLOGY","HUNTER-GATHERER","HUNTING","HYBRIDIZATION","HYPOTHESIS TESTING","IMMUNITY","INCEST TABOO","INDIRECT RECIPROCITY","INDIVIDUATION","INDUSTRIAL MELANISM","INFERENCE","INHERITANCE SYSTEMS","INSECTS","INSTRUCTIVE","INTEGRATION OF DISCIPLINES","INTENTION","INTERACTOR","INTERDISCIPLINARY","INTERLEVEL THEORIES","INTERNALISM","INTERVENTION","INTERVENTIONISM","INTRAGENOMIC CONFLICT","ISOLATION","JUSTICE","K. R. POPPER","KANT","KONRAD LORENZ","KUHN","LANGUAGE DEVELOPMENT","LAW","LAWS OF INHERITANCE","LAWS OF NATURE","LEVELS OF ANALYSIS","LEVELS OF EXPLANATION","LEVELS OF ORGANIZATION","LEVINS","LIFE HISTORY THEORY","LIFE-HISTORY EVOLUTION","LINEAGE","LINEAGES","LINNAEUS","LIVING FOSSIL","LOGICAL FALLACIES","LORENZ","LOUIS AGASSIZ","LUCA","MALADAPTATION","MALFUNCTIONS","MANIPULATION","MARK TEST","MARX","MASS EXTINCTIONS","MATERIAL MODELS","MATERIALISM","MAXIMIZATION","MEASUREMENT","MECHANISM DISCOVERY","MEDICINE","MEMORY","MENTAL CONTENT","MENTAL REPRESENTATIONS","MERGE","METAPHILOSOPHY","METAPHYSICAL REALISM","METAPOPULATION","MICROBE","MICROBIAL COMMUNITY ANALYSIS","MICROBIAL SPECIES","MICROBIOMES","MICROBIOTA","MIMICRY","MINDREADING/THEORY OF MIND","MINIMAL COGNITION","MODALITY","MODEL BUILDING","MODEL SELECTION","MODULE","MOLECULAR EVOLUTION","MOLECULAR GENE","MOLECULAR GENETICS","MONISM","MORAL COGNITION","MORAL EMOTIONS","MORAL REASONING","MORAL SIGNALS","MORGAN'S CANON","MORPHOSPACE","MUSICALITY","MUTATION","MUTUALISM","NAME","NARRATIVE","NATIVE RANGE","NATIVISM","NATURAL","NATURAL KIND","NATURALIZATION","NEANDERTHAL","NESTED HIERARCHY","NETWORK","NEURAL DARWINISM","NEURAL NETWORK","NEUROECONOMICS","NEURON","NEUROPLASTICITY","NEUTRAL EVOLUTION","NIETZSCHE","NON-COGNITIVISM","NON-EQUILIBRIUM THERMODYNAMICS","NON-NATIVE SPECIES","NORM PSYCHOLOGY","NORMATIVE COGNITION","NORMATIVE ETHICS","NURTURE","OBJECTS","OPEN-ENDED EVOLUTION","ORIGIN","ORIGINS OF LIFE","OSTENSIVE DEFINITION","PALAEOANTHROPOLOGY","PANDEMIC","PARADIGM","PARALLEL PROCESSING","PARENTAL CARE","PARITY THESIS","PARTNER CHOICE","PATH DEPENDENCE","PEDAGOGY","PERMISSIVE","PERSONALITY","PETER GODFREY-SMITH","PHAGE","PHILOSOPHY OF HISTORICAL SCIENCES","PHILOSOPHY OF MEDICINE","PHILOSOPHY OF MOLECULAR BIOLOGY","PHILOSOPHY OF NEUROSCIENCE","PHYLOGENETIC DIVERSITY","PHYLOGENETIC NETWORKS","PHYLOGEOGRAPHY","PHYSICALIST ANTIREDUCTIONISM","PIRAHÃ","PLACEBO","PLACEBO EFFECT","PLANT NEUROBIOLOGY","PLANT SEXUALITY","PLATO","POLICY","POPULATION REGULATION","POPULATIONS","PRAGMATISM","PREFORMATION","PRICE EQUATION","PRIMATOLOGY","PROPER FUNCTIONS","PROPORTIONALITY","PSYCHOLOGICAL ALTRUISM","PSYCHOPATHY","PUNCTUATED EQUILIBRIA","R.D. ALEXANDER","RATIONALISM","RECIPROCAL ALTRUISM","RECIPROCITY","RECOMBINATION","REFERENCE","REGULARITY","RELEVANCE","RELIGION","REPUTATION","REVERSION","REVOLUTION","RICHARD OWEN","RIGID DESIGNATION","RITUAL","RNA WORLD","ROBUSTNESS ANALYSIS","SCAFFOLDING","SCHIZOPHRENIA","SCIENCE AND CULTURE","SCIENTIFIC DISCOVERY","SCIENTIFIC LAWS","SCIENTIFIC MODELLING","SCIENTIFIC REALISM","SCREENING-OFF","SELECTED-EFFECT","SELECTION ANALYSIS","SELECTIONISM","SELF","SELF-AWARENESS","SEMANTIC CONTENT","SEMANTICS","SENDER","SENSORIMOTOR COORDINATION","SEX RATIO","SHANNON","SHARED INTENTIONALITY","SHIFTING BALANCE","SIGNALING GAMES","SIMPLICITY","SKIN BRAIN THESIS","SOBER","SOCIAL BEHAVIOUR","SOCIAL CHOICE","SOCIOLOGY","SPECIES CONCEPT","SPEECH","STAG HUNT GAME","STATISTICAL AUTONOMY","STEM CELLS","STEPHEN JAY GOULD","STRESS","STRUCTURE","SUBJECTIVITY","SUFFERING","SUPERORGANISM","SYMBOLIC BEHAVIOR","SYMMETRY","SYNAESTHESIA","SYNTHESIS","TAXON","TECHNOLOGY","TELEONOMY","THE FREE ENERGY PRINCIPLE","THEORETICAL BIOLOGY","THEORETICAL ECOLOGY","THEORY OF EVOLUTION","THERMODYNAMICS","TINBERGEN","TOLERANCE","TOTAL EVIDENCE","TRAITS","TYPE SPECIMEN","TYPE SPECIMENS","UNDERSTANDING","UNIQUENESS","UNIT OF SELECTION","UNITY OF SCIENCE","UNIVERSAL DARWINISM","UNIVERSALITY","UNTESTABLE","UTILITY","VALUE","VALUES IN SCIENCE","VIRUS","WEISMANN","WEISMANNISM","WELFARE","WHEWELL","WHIGGISM","WILDERNESS","WILLIAM BATESON","YULE PROCESS","'MAKING SPECIAL'","'OMIC APPROACH","'OUGHT' (SEMANTICS)","(BASIC) AUTONOMOUS SYSTEMS","(MINIMAL) BIOLOGICAL ORGANIZATION","4E COGNITION","A PRIORI ARGUMENT","A PRIORI EXPLANATORY MODELS","ABDUCTIVE INFERENCE","ABIOTIC FACTORS","ABSOLUTISM","ABSTRACT MODELS","ABSTRACT(ION)","ABSTRACTIONS","ABSTRACTNESS","ABSURD","ACCESS CONSCIOUSNESS","ACQUIRED CHARACTERISTICS","ACTION","ACTION PRINCIPLES","ACTIVE CAUSATION","ACTIVITY","ADAPTEDNESS","ADAPTIVE","ADAPTIVE BUTTES","ADAPTIVE DECISION MAKING","ADAPTIVE DIVERGENCE","ADAPTIVE IMAGINARY REPRESENTATIONS","ADAPTIVE IMMUNE SYSTEMS","ADAPTIVE IMMUNITY","ADAPTIVE MANAGEMENT","ADAPTIVE VALUE","ADAPTIVE WALKS","ADDICTION","ADJACENT POSSIBLE","AESTHETIC","AESTHETIC EVOLUTION","AESTHETICS","AESTHETICS OF NATURE","AFFECT","AFFECTIVE SCIENCE","AFFECTIVE STATES","AGENT","AGENT-BASED MODELS","AGENTS","AGGREGATE CHARACTERS","AGGREGATION","AGGREGATIVITY","AGGRESSION","AGING BIOLOGY","AGRICULTURE","AKAIKE INFORMATION CRITERION","ALAN GRAFEN","ALDO LEOPOLD","ALEX LEVINE","ALEX ROSENBERG","ALGORITHM","ALGORITHMS","ALLOMETRIES AND SCALING LAWS","ALLOMETRY","ALLOSTASIS","ALLOSTERIC EFFECTORS","ALPHA HELIX","AMBIGUITY","AMBIVALENCE","AMORPHISM","AMOTZ ZAHAVI","AMPLICON SEQUENCING","AMYGDALA","ANAESTHESIOLOGY","ANALOGIES IN SCIENCE","ANAMENSIS","ANCIENT DNA","ANDRÉ ARIEW","ANDY CLARK","ANGELA POTOCHNIK","ANIMACY","ANIMAL ARTEFACT","ANIMAL BEHAVIOUR","ANIMAL CARE BEHAVIOR","ANIMAL COMMUNICATION","ANIMAL COMMUNICATIVE SIGNALS","ANIMAL CULTURAL TRADITIONS","ANIMAL ETHICS","ANIMAL EVOLUTION","ANIMAL MODELS","ANIMAL NAVIGATION","ANIMAL ORIENTATION","ANIMAL PAIN","ANIMAL PERSONALITY","ANIMAL REMINDER","ANIMAL RESEARCH ETHICS","ANIMAL RIGHTS","ANIMAL SENTIENCE","ANIMAL SHELTER","ANIMAL SIGNALING","ANIMAL SIGNALS","ANIMAL SUFFERING","ANIMAL WELFARE SCIENCE","ANIMALS MINDS","ANISOGAMY","ANOVA","ANTHROPIC BIAS","ANTHROPIC PRINCIPLE","ANTHROPOCENE","ANTHROPOCENTRICISM","ANTHROPOGENIC FACTORS","ANTI-NATURALISM","ANTI-REALISM","ANTI-REALISM ABOUT RACE","ANTICIPATION","ANTICIPATORY REPRESENTATION","ANTS","ANXIETY","APE COGNITION","APE CULTURE","APES","APLYSIA","APOSEMATISM","APPARENT AGENCY","APPARENT DESIGN","APPLIED RESEARCH","APPROVAL","APRIORI LAWS","ARBITRARY PAYOFFS","ARCHAEOPTERYX","ARCHITECTURE","ARISE OF COMPLEXITY","ARITHMETIC MEAN","ARSENIC BACTERIA","ARTEFACT MODEL","ARTHUR LOVEJOY","ARTHUR PEACOCKE","ARTIFACTS","ARTIFICIAL CLASSIFICATION","ARTIFICIAL INTELLIGENCE","ARTIFICIAL LIFE PROGRAMMING","ARTIFICIAL SELECTION","ASSESSMENT","ASSESSOR","ASSESSOR TEACHING","ASSIMILATION","ASSOCIATION","ASSOCIATIVE LEARNING","ASSOCIATIVE NETWORK","ASSORTATIVE GROUPING","ATAVISM","ATTENTION","ATTITUDE","ATTRACTOR","ATTRIBUTION THEORY","AUDIENCE EFFECT","AUGUSTIN P. DE CANDOLLE","AUSCHWITZ","AUTECOLOGY","AUTHENTICITY","AUTOBIOGRAPHICAL MEMORY","AUTOCATALYTIC CLOSURE","AUTOCELL","AUTOMATA","AUTOMATICITY","AUTONOMIZATION","AUTONOMOUS AGENTS","AUXILIARY HYPOTHESES","AVATARS","AVERAGE FITNESS","AVERAGING STRATEGIES","AVERY","AVOIDANCE LEARNING","BACTERIAL REPRESENTATION","BACTERIOPHAGE","BALANCING SELECTION","BASAL COGNITION","BASE RATE FALLACY","BASIC MEDICAL SCIENCE","BASINS OF ATTRACTION","BATESON","BATESON-DOBZHANSKY-MULLER MODEL","BAYES' THEOREM","BAYESIAN BRAIN","BAYESIAN CONFIRMATION THEORY","BAYESIAN EPISTEMOLOGY","BAYESIAN INFERENCE","BAYESIAN MODELS","BAYESIAN PHYLOGENETICS","BEACH","BEADLE","BEANBAG GENETICS","BEATTY","BECHTEL","BEF","BEHAVIOR GENETICS","BEHAVIOR MODULATION","BEHAVIORAL DEVELOPMENT","BEHAVIORAL ECOLOGY VIEW","BEHAVIORAL HOMOLOGY","BEHAVIORAL NEUROSCIENCE","BEHAVIORAL VARIABILITY","BEHAVIOUR READING","BEHAVIOURAL ALTRUISM","BEHAVIOURAL GENOMICS","BEHAVIOURAL HIERARCHY","BELIEF SYSTEMS","BENEFIT","BENVENISTE","BERNARD ALTUM","BERNHARD RENSCH","BIASES","BILDUNG","BIO-AGENCY","BIO-CULTURAL FEEDBACK","BIO-NEURAL INTEGRATION","BIOCHEMICAL CONSTRAINTS","BIODIVERSITY MEASURE","BIODIVERSITY SCOPE","BIODIVERSITY—ECOSYSTEM FUNCTION DEFENSES","BIOECONOMICS","BIOENGINEERING","BIOGENESIS","BIOGENETIC LAW","BIOGENIC","BIOGENIC APPROACH","BIOINFORMATICS","BIOLINGUISTICS","BIOLOGICAL CATEGORIES","BIOLOGICAL CAUSATION","BIOLOGICAL DEVELOPMENT","BIOLOGICAL DISPOSITIONS","BIOLOGICAL ENGINEERING","BIOLOGICAL EVOLUTION","BIOLOGICAL EXPLANATION","BIOLOGICAL INDIVIDUALS","BIOLOGICAL LAW","BIOLOGICAL LINEAGE","BIOLOGICAL MEASUREMENT","BIOLOGICAL MODULES","BIOLOGICAL ONTOLOGIES","BIOLOGICAL ORGANIZATION","BIOLOGICAL RACIAL REALISM","BIOLOGICAL SCAFFOLDS","BIOLOGICAL SCIENCES","BIOLOGICAL SPECIMENS","BIOLOGICAL STRUCTURALISM","BIOLOGICAL SYSTEM 1","BIOLOGICAL TECHNOLOGY","BIOLOGY &AMP; PHILOSOPHY","BIOLOGY AND PHILOSOPHY JOURNAL","BIOLOGY AND STATISTICS","BIOMARKER","BIOMEDICAL RESEARCH","BIOMETRICIANS","BIOMOLECULAR MACHINES","BIORHYTHMS","BIOROBOTIC EXPERIMENTS","BIOSEMIOTICS","BIOSTATISTICAL THEORY","BIOTIC FACTORS","BIRD SONG","BIRDS","BLACK QUEEN HYPOTHESIS","BLINDNESS","BODY SIZE","BODY TRANSFORMATIONS","BOLOGICAL SYSTEMS","BOOTSTRAPPING","BORROWED EPISTEMIC CREDIBILITY","BOTTOM-UP PLURALISM","BOUNDARY","BOYD","BRAIN ARCHITECTURE","BRAIN DEVELOPMENT","BRAIN TRANSPLANT","BRAINOCENTRISM","BRAINS AS COMPUTERS","BREEDING","BRIAN SKYRMS","BURGESS SHALE","BY-PRODUCT OF SELECTION","BYPRODUCT","C. DARWIN","C. DIFFICILE","C. ELEGANS","CAMBRIAN","CAMBRIAN EXPLOSION","CANCER METABOLISM","CANCER PROGRESSION","CANCER STEM CELL","CANINE COGNITION","CAPABILITIES APPROACH","CARL LINNAEUS","CARNAP","CARSON","CASUAL EFFICACY","CATALYSIS","CATARACT EXPERIMENTS","CATASTROPHISM","CATEGORY ERRORS","CATFISHES","CAUSAL","CAUSAL AUTONOMY","CAUSAL FACTORS","CAUSAL INFORMATION","CAUSAL ISOLATION","CAUSAL NETWORK GRAPHS","CAUSAL PARITY","CAUSAL SPECIFICITY","CAUSAL STRUCTURE","CAUSAL THEORY","CAUSAL UNDERSTANDING","CAUSAL-ROLE","CAUSALISM","CAUSALLY ADEQUATE DECOMPOSITIONS","CAUSE-CONDITION DISTINCTION","CELEBRITY","CELL","CELL CONDENSATIONS","CELL FATES","CELL LINEAGES","CELL SIGNALING MECHANISM","CELL TYPES","CELLS AS MACHINES","CELLULAR AUTOMATA","CELLULAR BRAIN","CELLULAR GOVERNMENT","CENTRAL DOGMA","CENTRAL HEAT THEORY","CERTAINTY","CETERIS PARIBUS","CETERIS PARIBUS LAWS","CH WADDINGTON","CHANCE VARIATION","CHANGE","CHAOS","CHARACTER IDENTITY","CHARACTER STATES","CHARACTER TRANSFORMATION","CHARACTERISTICS","CHARACTERS","CHARGE OF CIRCULARITY","CHARISMATIC AUTHORITY","CHEATER DETECTION MECHANISMS","CHECKERBOARD DISTRIBUTION","CHEMICAL SIGNALING","CHILDBIRTH","CHILDREN","CHIMAERA, CHIMERA, CHIMERISM, CHIMAERISM","CHIMPANZEE","CHIMPANZEE LANGUAGE","CHOICE","CHOMSKY","CHRISTOPHER BOORSE","CHROMOSOME THEORY","CHURCHLAND","CIPC","CIRCADIAN CLOCK","CIRCADIAN CYCLES","CIRCUIT","CIRCULARITY","CLADIST","CLADOGRAM","CLADOGRAMS","CLASSICAL ETHOLOGY","CLASSICAL STATISTICS","CLINE","CLINICAL DECISIONS","CLINICAL TRIALS","CLONAL EVOLUTION","CLONING","CLOSTRIDIUM DIFFICILE","CLOSURE","CLUMPING","CLUSTER","CLUSTER ANALYSIS","CLUSTER CLASSES","CLUSTER CONCEPTS","CLUSTERING ALGORITHM","CO-MANAGEMENT","CO-ORDINATED STASIS","COARSE-GRAINING","CODE","CODES OF NOMENCLATURE","CODING","COELACANTH","COERCION AVOIDANCE","COEVOLUTIONARY APPROACHES","COGNITION BY DESCRIPTION","COGNITIVE ANTHROPOLOGY","COGNITIVE BIASES","COGNITIVE CLOSURE","COGNITIVE CONTROL","COGNITIVE ECOLOGY","COGNITIVE FLUIDITY","COGNITIVE FUNCTIONALISM","COGNITIVE FUNCTIONS","COGNITIVE GADGETS","COGNITIVE GAP","COGNITIVE HOMOLOGY","COGNITIVE MAP","COGNITIVE MAPS","COGNITIVE MODELLING","COGNITIVE MODULES","COGNITIVE NICHE CONSTRUCTION","COGNITIVE PSYCHOLOGY","COGNITIVE REPRESENTATION","COGNITIVE SCIENCE, EMBODIED COGNITION","COGNITIVE TRAITS","COGNITIVELY PENETRABLE","COHERENTISM","COLLECTION","COLLECTIVE ACTION","COLLECTIVE ACTION PROBLEMS","COLLECTIVE DECISION-MAKING","COLLECTIVE MEMORY","COLONIZE","COLOR VISION","COMBINATION MEASUREMENT FRAMEWORK","COMBINATORIAL SIGNS","COMMENSALISM","COMMITMENT","COMMITMENTS","COMMON KNOWLEDGE","COMMONSENSE","COMMON’S TRAGEDY","COMMUNITY DYNAMICS","COMMUNITY EVOLUTION","COMPACT PROCEDURES","COMPARATIVE ADVANTAGE","COMPARATIVE ANATOMY","COMPARATIVE COGNITION","COMPARATIVE GENOMICS","COMPARATIVE VISION","COMPATIBILISM","COMPETITIVE EXCLUSION","COMPETITIVE HIERARCHIES","COMPETITIVE INHIBITION","COMPLETENESS","COMPLEX NATURAL SYSTEM","COMPLEX VOCAL LEARNING","COMPLEXITY HYPOTHESIS","COMPOSITE WHOLE","COMPOSITION","COMPOSITIONAL MATERIALISM","COMPOSITIONAL REALIZATION","COMPOSITIONAL SYNTAX AND SEMANTICS","COMPUTABILITY","COMPUTATION","COMPUTATIONAL ARCHITECTURE","COMPUTATIONAL COGNITIVE SCIENCE","COMPUTATIONAL EXPLANATIONS","COMPUTATIONAL INDIVIDUATION","COMPUTATIONAL LEARNING THEORY","COMPUTER METAPHOR","COMPUTING","CONCEPT","CONCEPT OF SPECIES","CONCEPT OF THE GENE","CONCEPT OF UNDERSTANDING","CONCEPT TRANSFER","CONCEPTUAL CHANGE","CONCEPTUAL CLOSURE","CONCEPTUAL DISTINCTION","CONCEPTUAL ENGINEERING","CONCEPTUAL EVOLUTION","CONCEPTUAL PROBLEMS","CONCEPTUAL ROLE","CONDITIONALIZATION","CONDITIONING","CONFLICT THEORY","CONFORMITY","CONGRUENCE TEST","CONNECTEDNESS","CONNECTING EMPIRICISM AND THEORY","CONNECTIONISM","CONNECTIONIST NETWORKS","CONNECTOME","CONRAD WADDINGTON","CONSCIOUS DESIGN","CONSENSUS","CONSEQUENTIALISM","CONSERVATION INTERVENTIONS","CONSERVATION SCIENCE","CONSERVED SEQUENCE","CONSERVED TRAIT","CONSILIENCE OF INDUCTIONS","CONSISTENCY","CONSTITUTION","CONSTITUTIVE AND INTERACTIVE DIMENSION","CONTEMPORARY EVOLUTION","CONTENT","CONTEXT","CONTEXT OF DISCOVERY","CONTEXT OF JUSTIFICATION","CONTEXTUAL EXPLANATION","CONTEXTUALISM","CONTEXTUALITY","CONTINGENT","CONTINGENT A PRIORI","CONTINUITY","CONTROL OF VARIABLES","CONTROLLED EXPERIMENT","CONTROLLED FIRE USE","CONVENTIONS","CONVERGENCES","CONVERGENT EVOLUTION","COOKING","COOPERATIVE BREEDING","COOPERATIVE FEEDING","COORDINATE TRANSFORMATION","COORDINATION","COORDINATION VIEW","COORDINATIVE CONSENSUS","COPE'S RULE","COPYING SOCIAL LEARNING","COPYING-DEPENDENT FORMS","COREPLICON","CORRELATED TRAITS","CORTEX","CORTICAL DEFERENCE","CORTICAL DOMINANCE","CORVID","COSMIDES","COSMOLOGICAL NATURAL SELECTION","COST","COST OF REPRODUCTION","COSTLY SIGNAL","COSTLY SIGNALING","COSTLY SIGNALLING","COUNTERFACTUAL","COUNTERFACTUAL COGNITION","COURTSHIP","COVERING LAW","COYNE","CRAVER","CREATURE CONSTRUCTION","CREDENCE","CREDIBILITY","CREDIBLE WORLD","CRISPR","CRISPR–CAS","CROSS-MODAL TRANSFER","CROSS-SPECIES COMPARISON","CRUCIAL EXPERIMENT","CRUDE NATURALISM","CRUELTY","CRYPTOBIOSIS","CULTURAL ATTRACTOR THEORY","CULTURAL ATTRACTORS","CULTURAL CHANGE","CULTURAL COMPLEXITY","CULTURAL EPIDEMIOLOGY","CULTURAL EVOLUTIONARY PSYCHOLOGY","CULTURAL GROUP SELECTION","CULTURAL LEARNING","CULTURAL NEURAL REUSE","CULTURAL NEUROSCIENCE","CULTURAL NICHE CONSTRUCTION","CULTURAL PHYLOGENETICS","CULTURAL SELECTION THEORY","CULTURAL STUDIES","CULTURAL-EVOLUTIONARY THEORY","CULTURE AND COGNITION","CULTURE CO-EVOLUTIONARY THEORY","CULTURE OF HONOUR","CUMMINS","CUMMINS FUNCTION","CUMULATIVE ADAPTATION","CUMULATIVE SELECTION","CUTTING EDGE","CUVIER","CUVIERIAN FUNCTIONALISM","CYCAD","CYSTIC FIBROSIS","DANCE","DANIEL C. DENNETT","DANIEL DENNETT","DANIEL S. LEHRMAN","DAREDEVILS","DARK ROOM PROBLEM","DARWIN AND PHILOSOPHY","DARWIN-EIGEN CYCLE","DARWIN-MULLER-MAYR THEORY","DARWINIAN DILEMMA","DARWINIAN ETHICS","DARWINIAN HISTORIES","DARWINIAN INDIVIDUAL","DARWINIAN MEDICINE","DARWINIAN METAETHICS","DARWINIAN POPULATION","DARWINIAN REVOLUTION","DARWINIAN TRADITION","DATA ANALYSIS","DATA-DRIVEN RESEARCH","DATA-DRIVEN SCIENCE","DAVID BARASH","DAVID HULL","DE DICTO","DE RE","DE SE BELIEFS","DE WAAL","DEATH","DECOHERENCE","DECOMPOSABILITY","DECOMPOSABLE HIERARCHY","DECOUPLED REPRESENTATION","DEDUCTIVE-NOMOLOGICAL","DEEP HOMOLOGY","DEFECTS","DEFENCE","DEFENSE SYSTEM","DEFINITION OF BIODIVERSITY","DEFINITIONS OF VISION","DEGREES OF NECESSITY","DEHUMANIZATION","DELUSIONS","DEMARCATION","DEMARCATION PROBLEM","DEME","DENNETT","DESCARTES","DESCENT OF MAN","DESCRIPTION","DESCRIPTIVE BIOLOGY","DESCRIPTIVE FUNDAMENTALISM","DESCRIPTIVE PHILOSOPHY","DESIGN ARGUMENT","DESIGN PRINCIPLES","DESIGN STANCE","DESIRE","DEVELOPMENT SYSTEMS THEORY","DEVELOPMENTA LPROGRAMS","DEVELOPMENTAL CANALIZATION","DEVELOPMENTAL CONSTRAINT","DEVELOPMENTAL CONSTRAINTS","DEVELOPMENTAL EVOLUTION","DEVELOPMENTAL EVOLUTIONARY BIOLOGY","DEVELOPMENTAL GENETICS","DEVELOPMENTAL MECHANISM","DEVELOPMENTAL MECHANISMS","DEVELOPMENTAL NEUROSCIENCE","DEVELOPMENTAL NICHE","DEVELOPMENTAL NICHE CONSTRUCTION","DEVELOPMENTAL PSYCHOBIOLOGY","DEVELOPMENTAL SYSTEM","DEVELOPMENTAL SYSTEMS","DEVELOPMENTALISM","DIACHRONIC","DIALECTICAL BIOLOGIST","DIALECTICS","DIASCHISIS","DICTYOSTELIUM DISCOIDEUM","DIFFERENCE","DIFFERENCE MAKER","DIFFERENCE MAKERS","DIFFERENCES IN DEGREE","DIFFERENCES IN KIND","DIFFERENTIAL REPRODUCTION","DIFFUSION","DIGITAL HISTORY","DIGITAL PHILOSOPHY","DIMENSIONALITY HYPOTHESIS","DINGO","DIRECT FUNCTUIONS","DIRECTED MUTATION","DIRECTED VARIATION","DISAGREEMENT","DISCIPLINE","DISCOVERY HEURISTICS","DISCRIMINATE SAMPLING","DISEASE LOCUS","DISGUST","DISPARITY","DISPERSAL","DISPOSITION","DISPOSITIONAL ACCOUNT OF FITNESS","DISPOSITIONS AND PROPENSITIES","DISSANAYAKE","DISSECTION","DISSOCIATION","DISTINCTIVELY BIOLOGICAL","DISTRIBUTED COGNITION","DISTRIBUTED INNOVATION","DISTRIBUTED SELF","DISTRIBUTION","DISTRIBUTIVE-COLLECTIVE","DISTURBING CONDITIONS","DISUNIFIED CONSCIOUSNESS","DIVERGENCE","DIVERGENCE TIME","DIVERSIFICATION RATES","DIVISION OF LABOUR","DNA BARCODING","DNA SEQUENCE DATA","DNA STRUCTURE","DOCTRINE OF RECOLLECTION","DOGMATISM","DOLLO","DOLPHIN","DOMAIN GENERAL","DOMAIN INDEPENDENT REPRESENTATION","DOMAIN SPECIFIC","DOMAIN-GENERAL REASONING","DOMAINS","DOMESTICATION","DOMINANCE BEHAVIOUR","DOMINANT","DOPAMINE","DOSAGE","DOUBLE-BARREL","DRAWING","DST","DUAL-INHERITANCE","DUAL-INHERITANCE THEORY","DUAL-PROCESS THEORY","DUALISM","DURATION","DYNAMIC DECOUPLING","DYNAMIC EQUILIBRIUM","DYNAMIC HOMOLOGY","DYNAMIC SENSORIMOTOR CONTINGENCIES","DYNAMIC STABILITY","DYNAMIC SUFFICIENCY","DYNAMIC SYSTEMS THEORY","DYNAMICAL CAUSAL MODELLING","DYNAMICAL DECOUPLING","DYNAMICAL EXPLANATION","DYNAMICAL MODELS","DYSFUNCTIONS","EARLY ANIMAL EVOLUTION","EARTH-SYSTEMS SCIENCE","ECO-EVO-DEVO","ECO-MODERNISM","ECOLOGICAL DRIFT","ECOLOGICAL EQUIVALENCE","ECOLOGICAL GENERALIZATION","ECOLOGICAL HEALTH","ECOLOGICAL HIERARCHY","ECOLOGICAL INFORMATION","ECOLOGICAL INHERITANCE","ECOLOGICAL INTERACTIONS","ECOLOGICAL LAWS","ECOLOGICAL LOCKING","ECOLOGICAL MECHANISM","ECOLOGICAL NICHE THEORY","ECOLOGICAL NICHES","ECOLOGICAL SPECIATION","ECOLOGICAL THEORY","ECOLOGICAL TRAITS","ECOLOGICAL WORLDVIEW","ECONOMIC CHOICE","ECONOMIC GROWTH","ECONOMIC METHODOLOGY","ECONOMIC MODELS","ECONOMIC THEORY OF CHOICE","ECOSOCIAL ANALYSIS","ECOSOPHY AND ECOFEMINISM","ECOSYSTEM ANALYSIS","ECOSYSTEM FUNCTIONS","ECOSYSTEM REGULATION","ECOSYSTEM SERVICES","ECOSYSTEM STRUCTURE","ECOTYPE","EFFECT HYPOTHESIS","EFFECTIVE ALTRUISM","EFFICIENCY","EFFICIENT CAUSALITY","EFFICIENT CAUSE","EGALITARIANISM","EGOCENTRIC BIAS","EGOISM, EVOLUTION","ELECTRIC FISH","ELECTRORECEPTION","EMBODIED CAPITAL THEORY","EMBODIMENT","EMBRYONIC DEVELOPMENT","EMBRYONIC FIELDS","EMERGENCE OF LIFE","EMERGENT CHARACTERS","EMERGENT PROPERTIES","EMOTION PERCEPTION","EMOTION RECOGNITION","EMPATHIC CARE","EMPATHY, MORAL CARE","EMPIRICAL ADAPTATIONISM","EMPIRICAL LAWS","EMULATION THEORY OF REPRESENTATION","ENACTION","ENCODE","ENCODE PROJECT CONSORTIUM","ENCODING","ENCODING SIGNS","ENCULTURATION","ENDOPLOID, ENDOMITOSIS","ENDOSPERM","ENDOSYMBIOSIS","ENERGY","ENGINEERING","ENGINEERING OPTIMALITY","ENTERIC NERVOUS SYSTEM","ENTRAINMENT","ENVIRONMENT OF EVOLUTIONARY ADAPTEDNESS","ENVIRONMENTAL CHANGES","ENVIRONMENTAL HETEROGENEITY","ENVIRONMENTAL HOMOGENEITY","ENVIRONMENTAL INTERFERENCE","ENVIRONMENTAL PHILOSOPHY","ENVIRONMENTAL PRESERVATION","ENVIRONMENTAL SCIENCE","ENVIRONMENTALISM","EPICUREAN SELECTIONISM","EPIDEMIC DISEASES","EPIGENETIC RULE","EPIPHENOMENA","EPIPHENOMENALISM","EPISODIC","EPISODIC MEMORY","EPISODIC-LIKE MEMORY","EPISTEMIC BOUNDEDNESS","EPISTEMICVIRTUES","EPISTEMOLOGICAL EMPIRICISM","EPISTEMOLOGICAL RELATIVISM","EPISTEMOLOGICAL/EPISTEMIC","EPITHELIA","EPITHELIUM","EQUILIBRIUM MODEL OF IMMUNITY","EQUILIBRIUM SELECTION","ERGODICITY","ERROR","ERROR RATES","ERWIN BAUR","ESCAPE POTENTIAL","ESSENTIAL MEMBERSHIP","ETHICAL BEHAVIOR","ETHICAL INTUITIONISM","ETHICAL NON-COGNITIVISM","ETHNOMETHODOLOGY","ETHNOMUSICOLOGY","ETIOBIOLOGY","EUGENICS","EUKARYA","EUKARYOGENESIS","EUKARYOTE","EUKARYOTE TREE OF LIFE","EUMETAZOAN BODY PLAN","EVIDENCE FOR USE","EVIDENCE SYNTHESIS","EVIDENCE-BASED CONSERVATION","EVIDENTIAL REASONING","EVOCATIVE LOGIC","EVOLUTION AND DEVELOPMENT","EVOLUTION AND INHERITANCE","EVOLUTION OF ATTENTION","EVOLUTION OF CONSCIOUSNESS","EVOLUTION OF COOPERATION","EVOLUTION OF INTELLIGENCE","EVOLUTION OF MIND","EVOLUTION OF MORAL BEHAVIOUR","EVOLUTION OF PRAGMATIC COMPETENCE","EVOLUTION OF SOCIAL BEHAVIOR","EVOLUTION OF SOCIAL NORMS","EVOLUTION OF SPEAKER MEANING","EVOLUTION OF THE ARTS","EVOLUTION OF THOUGHT","EVOLUTION THEORY","EVOLUTIONARY ALGORITHMS","EVOLUTIONARY ANTHROPOLOGY","EVOLUTIONARY BIOLOGY IN JAPAN","EVOLUTIONARY BYPRODUCT","EVOLUTIONARY CONSTRAINTS","EVOLUTIONARY DEBUNKING","EVOLUTIONARY DEBUNKING ARGUMENTS","EVOLUTIONARY DEVELOPMENTAL BIOLOGY (EVO-DEVO)","EVOLUTIONARY DRIVERS","EVOLUTIONARY EXPLANATIONS","EVOLUTIONARY FAILURE","EVOLUTIONARY FITNESS","EVOLUTIONARY FORCES","EVOLUTIONARY GENOMICS","EVOLUTIONARY HISTORY","EVOLUTIONARY HOMEOSTASIS","EVOLUTIONARY IDIOSYNCRASIES","EVOLUTIONARY INDEPENDENCE","EVOLUTIONARY INNOVATIONS","EVOLUTIONARY MEDICINE","EVOLUTIONARY MODELING","EVOLUTIONARY NATURALISM","EVOLUTIONARY NICHE","EVOLUTIONARY OPTIMALITY","EVOLUTIONARY RADIATION","EVOLUTIONARY RATES","EVOLUTIONARY SELECTION","EVOLUTIONARY SPACE","EVOLUTIONARY STABILITY","EVOLUTIONARY STABLE STRATEGY","EVOLUTIONARY SUCCESS","EVOLUTIONARY SYSTEMS BIOLOGY","EVOLUTIONARY THEORY OF COOPERATION","EVOLUTIONARY TRADE-OFF","EVOLUTIONARY TREE","EVOLUTIONARY TRENDS","EVOLUTIONARYTRANSITIONS","EVOLUTIONARY TRANSITIONS","EVOLVING LINEAGES","EXCHANGE","EXECUTIVE CONTROL","EXISTENTIALISM","EXOGENETIC INHERITANCE","EXOPLANET RESEARCH","EXOTIC","EXPECTANCY","EXPECTED FREE ENERGY","EXPERIENTIAL NICHE CONSTRUCTION","EXPERIMENTAL ETHICS","EXPERIMENTAL MODELS","EXPERIMENTAL PHENOMENON","EXPERIMENTAL PHILOSOPHY","EXPERIMENTAL SCIENCE","EXPERIMENTAL TAXONOMY","EXPERIMENTAL TECHNIQUES","EXPERIMENTATION","EXPLANATION IN NEUROSCIENCE","EXPLANATORY GAP","EXPLANATORY GAPS","EXPLANATORY POWER","EXPLANATORY STANDARDS","EXPLANATORY TOOLKIT","EXPLANATORY UNIFICATION","EXPLICATION","EXPLICIT VERSUS IMPLICIT","EXPLORATORY EXPERIMENTATION","EXPLORATORY MODELS","EXPRESSIVISM","EXTENDED HEREDITY","EXTENDED SELF","EXTENDED SYNTHESIS","EXTENSION","EXTERNALISM","EXTRACTION AND EVOCATION","EYE-GAZE","FACILITATED ADAPTATION","FACILITATED VARIATION","FACILITATION","FACT","FACT/VALUE DISTINCTION","FACTIVITY","FACTORS OF INHERITANCE","FAIRNESS","FAKE NEWS","FALSE DILEMMA","FALSE MEMORY","FEAR","FEELING","FEMALE ORGASM","FINAL CAUSALITY","FINAL CAUSES","FISH","FITNESS DECOUPLING","FITNESS LANDSCAPE","FITNESS PRINCIPLE","FITNESSLAND SCAPE","FLEXIBILITY","FLEXIBLE BEHAVIOUR","FLIGHT TO REFERENCE","FLORID CONTROL","FLORIDA PANTHER","FLOW REACTOR","FLUCTUATING ASYMMETRY","FODOR","FOLK BIOLOGY","FOLK PHYSICS","FORAGING","FORCE","FORCE METAPHOR","FORESIGHT","FORGIVENESS","FORM","FORMAL CAUSE","FORMAL CAUSES","FORMAL MODEL","FORMS","FOSSIL","FOSSILS","FOUNDATION OF ETHICS","FOUNDATIONALISM","FOUNDATIONS OF ETHICS","FOUNDER EFFECT","FOUR QUESTIONS","FOXP2","FRAMEWORK","FREE ENERGY PRINCIPLE (FEP)","FREE RIDER PROBLEM","FREE RIDING","FREE WILL","FREE-ENERGY PRINCIPLE","FREE-MARKET ECONOMIES","FROM DNA- TO NA-CENTRISM","FROZEN ACCIDENT THEORY","FRUIT FLIES","FUNCTION CONCEPTS","FUNCTION OF THE GENOME","FUNCTION PREDICTION","FUNCTIONAL","FUNCTIONAL ANALYSIS","FUNCTIONAL DIVERSITY","FUNCTIONAL HOMOLOGY","FUNCTIONAL INTEGRATION","FUNCTIONAL KINDS","FUNCTIONAL LOCALIZATION","FUNCTIONAL LOCALIZATION FALLACIES","FUNCTIONAL MESH","FUNCTIONAL PROFILE","FUNCTIONAL REFERENCE","FUNDAMENTAL THEOREM OF NATURAL SELECTION","FUNDING OF BIOLOGY","G. EVELYN HUTCHINSON","GAIA","GAIA HYPOTHESIS","GALTON’S PROBLEM","GAME OF LIFE","GARETH NELSON","GAYON","GENE CIRCULATION","GENE DISCOVERY","GENE FREQUENCIES","GENE MOBILITY","GENE POSITION","GENE PREDICTION","GENE PROMOTERS","GENE REGULATION NETWORKS","GENE SELECTIONISM","GENE STRUCTURE","GENE THEORY","GENE TRANSFER","GENE TRANSMISSION","GENE'S-EYE VIEW","GENE-CULTURE COEVOLUTION","GENE-DE-CENTRISM","GENE-EDITING","GENE-INTERACTIONISM","GENEALOGICAL EXCLUSIVITY","GENECENTRISM","GENEOLOGICAL HIERARCHY","GENERAL THEORY","GENERALISATION","GENERALISED DARWINISM","GENERALITY","GENERALITY PROBLEM","GENERALIZATION-SKETCH","GENERALIZED DARWINISM","GENERALIZED SYSTEMATICITY","GENERIC ABSTRACTION","GENERIC TRAIT TYPES","GENET","GENETIC ACCOMMODATION","GENETIC ALGORITHM","GENETIC ALGORITHMS","GENETIC APPROACH","GENETIC CAUSATION","GENETIC CIRCUIT","GENETIC CODE","GENETIC COVARIANCES","GENETIC DISEASE","GENETIC EPISTEMOLOGY","GENETIC INHERITANCE","GENETIC INHERITANCE SYSTEM","GENETIC LIABILITY","GENETIC LOAD","GENETIC NETWORKS","GENETIC VARIATION","GENETICIZATION","GENETICS AND DEVELOPMENT","GENETICS OF POPULATIONS","GENIC PLURALISM","GENIC SELECTION","GENIC SELECTIONISM","GENOCENTRISM","GENOME EDITING","GENOME ENGINEERING","GENOMIC STRUCTURE","GENOSEMANTICS","GENOTYPE-ENVIRONMENT INTERACTION","GENOTYPE–PHENOTYPE MAP","GEOGRAPHICAL ANCESTRY","GEOLOGY","GERM-SOMA SPECIALIZATION","GERMAN ANTHROPOLOGY","GESTALT","GESTURE","GIBBARD","GILBERT GOTTLIEB","GLOBAL AVAILABILITY","GLOBAL WORKSPACE","GOAL-DIRECTED BEHAVIOUR","GRADUALISM","GRADUALIST","GRAFEN","GRANDMOTHER HYPOTHESIS","GRANULARITY","GRAPHICAL CAUSAL MODELS","GREAT APE COMMUNICATION MUSICALITY","GREAT CUBE OF BEING","GREENBEARD","GREGARIOUS BEHAVIOR","GROOMING","GROUP DIFFERENCES","GROUP FITNESS","GROWTH RATE","GUT MICROBIOTA","GWAS","H.T. ODUM","HABIT","HABITAT DEGRADATION","HABITAT TEMPLETS","HALDANE","HAMILTON'S RULE","HARD PROBLEM OF CONTENT","HARDY WEINBERG","HARDY-WEINBERG","HARDY–WEINBERG EQUILIBRIUM","HARMFUL DYSFUNCTIONS","HARRISON","HAYSTACK MODEL","HEALTH STATISTICS","HEIRARCHICAL VIEW OF CONSTRAINTS","HEMATOLOGY","HENRY SIDGWICK","HERBERT SPENCER","HEREDITARIAN","HEREDITARIANISM","HEREDITARY UNIT","HERITAGE","HERMENEUTICS","HERSCHEL CRITERION","HETEROZYGOTE","HETEROZYGOTE ADVANTAGE","HEURISTIC POWER","HIERARCHICAL CODING","HIERARCHICAL STRUCTURE","HIERARCHY THEORY","HIERARCHY-OF-HYPOTHESES APPROACH","HIGHER CATEGORIES","HIGHER COGNITIVE EMOTIONS","HIGHER ORDER THEORIES OF CONSCIOUSNESS","HIGHER-ORDER THEORIES","HIGHER-ORDER THOUGHT","HIPPOCAMPUS","HISTORICAL","HISTORICAL BASELINE","HISTORICAL DEBUNKING","HISTORICAL ENTITY","HISTORICAL FIDELITY","HISTORICAL KINDS","HISTORICAL LINGUISTICS","HISTORICAL SCIENCES","HISTORICAL TURN","HISTORICTY","HISTORY AND PHILOSOPHY OF ASTRONOMY","HISTORY AND PHILOSOPHY OF BIOLOGY","HISTORY OF BIOLOGY","HISTORY OF EVOLUTIONARY BIOLOGY","HISTORY OF PALEONTOLOGY","HISTORY OF PHILOSOPHY OF BIOLOGY","HISTORY OF PHILOSOPHY OF SCIENCE","HISTORY OF PSYCHOLOGY","HISTORY OF THE PHILOSOPHY OF SCIENCE","HIV","HODGE","HOLEY LANDSCAPE","HOLISM ORGANICISM","HOLOGENOME","HOLOTYPE","HOMEO BOXES","HOMEOSTATIC PROPERTY CLUSTER","HOMEOSTATIC PROPERTY CLUSTERS","HOMEOTAXY","HOMININ","HOMININS","HOMO HEIDELBERGENSIS","HOMO SUADENS","HOMOLOGY OF FUNCTION","HOMOLOGY THINKING","HOMOSEXUAL ORIENTATION","HOMOZYGOTE","HOMUNCULAR FUNCTIONALISM","HONEST SIGNALING","HONEST SIGNALLING","HONOR","HONOR CULTURES","HORIZONTAL","HORIZONTAL CONTROL OF LIVING THINGS","HORSESHOE CRAB","HOYLE CRITERIA","HPA AXIS","HPC","HPV VACCINE","HUBBELL","HUIA","HUMAN BEHAVIOUR","HUMAN ETHOLOGY","HUMAN EVOLUTION AND BEHAVIOR","HUMAN EVOLUTIONARY ECOLOGY","HUMAN GENOME","HUMAN REVOLUTION","HUMAN SENSORY MODALITIES","HUMAN THINKING","HUMAN UNIQUENESS","HUMAN UNIVERSALS","HUMAN VARIATION","HUMAN-NONHUMAN DISTINCTION","HUMAN-UNIQUE COGNITION","HUMAN/NATURE DICHOTOMY","HUMANIZED MICE","HUME","HUNTER-GATHERERS","HUTCHINSON","HUXLEY","HYBRIDIZATION AND INHERITANCE","HYMENOPTERANS","HYPERCUBE MODELS","HYPERCYCLE","HYPOTHESIS-DRIVEN SCIENCE","ICHNOFOSSIL","ICHNOLOGY","ICONIC REFERENCE","ICONIC WORDS","IDEA","IDEALISATION","IDEALISM","IDENTIFICATION","IDENTITY CONDITIONS","ILLUSION","IMAGERY","IMAGINATION","IMAGINATIVE UNDERSTANDING","IMMANUEL KANT","IMMATENESS","IMMUNE MEMORY","IMMUNE SELF","IMMUNOCEPTIVE INFERENCE","IMMUNOLOGICAL INDIVIDUALITY","IMPERATIVISM","IMPLICIT PROCESSES","IMPRINTING","INCEST TABOOS","INCLUSIVE FITNESS THEORY","INDETERMINACY OF COMPUTATION","INDIGENOUS KNOWLEDGE","INDISCRIMINATE SAMPLING","INDIVIDUAL ESSENTIALISM","INDIVIDUAL LEARNING","INDIVIDUAL-BASED MODELS","INDIVIDUAL-LEVEL AND POPULATION-LEVEL PROPERTIES","INDIVIDUALISM","INDIVIDUALIZED NICHE","INDIVIDUATION OF THE SENSES","INDUCED VARIATION","INDUCTION","INDUCTIVE METAPHYSICS","INEQUALITY AND ETHICS","INFANTICIDE","INFERENCE TO THE BEST EXPLANATION","INFLUENCE","INFODEMIC","INFORMATION ENCAPSULATION","INFORMATION ENTROPY","INFORMATION PROCESSING","INFORMATION TRANSMISSION","INFORMATION-PROCESSING","INFORMATIONAL ATTRIBUTES","INFORMATIONALLY ENCAPSULATED","INFORMED PATTERS OF ENERGY FLOW","INFRASTRUCTURE","INHERITANCE OF ACQUIRED CHARACTERISTICS","INHERITANCE OF ACQUIRED CHARACTERS","INHERITANCE SYSTEM","INHERITED VARIATION","INHIBITION","INNATE CONSTRAINT","INNATE IDEAS","INNATE–ACQUIRED DISTINCTION","INOCULATION","INPUT–OUTPUT VIEW","INSENSITIVITY","INSTITUTIONS","INSTRUMENTAL INTERVENTION","INSTRUMENTAL REDUCTIONISM","INSTRUMENTAL VALUE DEFENSES","INSTRUMENTALISM","INSTRUMENTS","INTEGRATED INFORMATION THEORY","INTEGRATIVE","INTELLIGENCE","INTENTION-SHARING","INTENTIONAL EXPLANATIONS","INTENTIONAL STANCE","INTERACTION","INTERACTIONISM","INTERACTIONS","INTERACTIVE MECHANISMS","INTERACTOME","INTERACTORS","INTERDEPENDENCE","INTERDISCIPLINARITY","INTERLEVEL CAUSATION","INTERNAL COADAPTATION","INTERNAL REALISM","INTERNAL SIGNALING","INTERNAL/EXTERNAL MERGE","INTEROCEPTION","INTERPERSONAL UTILITY COMPARISONS","INTERSPECIFIC COMPETITION","INTERSUBSTITUTABILITY","INTERVENTION CALCULI","INTERVENTIONISM ABOUT CAUSATION","INTERVENTIONIST ACCOUNT","INTERVENTIONIST CAUSATION","INTRACTABILITY","INTRAPERSONAL CONFLICT","INTRASPECIFIC VARIATION","INTRINSIC AND INSTRUMENTAL DESIRE","INTRINSIC END","INTRINSIC INTENTIONALITY","INTRINSIC VALUES","INTUITIVE ONTOLOGIES","INVASION","INVASION ECOLOGY","INVISIBILITY","INVISIBLE HAND","ION CHANNELS","IOWA GAMBLING TASK","IQ","IQ PARADOX","IQ SCORES","ISLAND BIOGEOGRAPHY THEORY","ISOLATING MECHANISMS","ISOLATION CONCEPTS","J. HESLOP-HARRISON","J. J. GIBSON","J.-B. LAMARCK","J.B.S. HALDANE","J.S. HUXLEY","J.S.L. GILMOUR","JACQUES LOEB","JOHANNSEN","JOHN HAUGELAND","JOHN HERSCHEL","JOSEPH GRINNELL","JUN OTSUKA","JURASSIC PARK","JUSTIFICATION","JUSTIFYING AND MOTIVATING REASONS","KANTIAN","KANTIAN TELEOLOGY","KARYOGAMY","KAUFFMAN","KENNETH SCHAFFNER","KEY-INNOVATIONS","KILOGRAM REDEFINITION","KIM","KIMURA","KIN-SELECTION","KIND","KINESIS","KINESTHETIC-VISUAL MATCHING","KINSHIP THEORY","KITCHER","KNOWLEDGE BY DESCRIPTION","KNOWLEDGE PROCESS","KNOWLEDGE TRANSFER","KRIPKE","LABORATORY ANIMAL SCIENCE","LABORATORY SCIENCE","LAKATOS","LAMARCKIAN","LAMARCKIAN EVOLUTION","LAMARCKIAN INHERITANCE","LAND ETHIC","LAND HEALTH","LAND MANAGEMENT","LANGUAGE ACQUISITION","LANGUAGE EVOLUTION CONSCIOUSNESS","LANGUAGE OF BIOMEDICAL RESEARCH","LANGUAGES","LANGUAGES OF THOUGHT","LANGUE","LAPLACEAN DEMON","LAPLACE’S DEMON","LAPLACIAN DETERMINISM","LAPORTE","LARGE POPULATION SIZE THEORY","LARYNGEAL DESCENT","LAST GLACIAL","LAST UNIVERSAL COMMON ANCESTOR","LATERAL GENETIC TRANSFER","LATOUR","LAWLIKENESS","LAWS OF BIOLOGY","LAWS OF DESIGN","LAWS OF HYBRIDIZATION","LEARNING BIASES","LEVELS OF CONCEPTUALIZATION","LIBERAL REPRESENTATIONALISM","LIFE CYCLE","LIFE HISTORY","LIFE-HISTORY","LIFE-HISTORY THEORY","LIFE-MIND CONTINUITY","LIFENESS SIGNATURE","LIMITING SIMILARITY","LINEAGE DIVERSIFICATION","LINEAR HIERARCHY","LINGUISTIC","LINGUISTIC RULES","LINNAEAN HIERARCHY","LITERARY DARWINISM","LITERATURE","LIVING ORGANISM","LIVING SYSTEMS","LOCAL ECOLOGICAL DYNAMICS","LOCAL SEARCH","LOCALITY AID","LOCALIZATION","LOGIC OF SCIENTIFIC DISCOVERY","LONG-DISTANCE DISPERSAL","LONGLEAF PINE","LOOP ANALYSIS","LOTKA-VOLTERRA MODELS","LTEE","LYELL","LYSENKO","MACHINE LEARNING","MACHINE-LIKE SYSTEMS","MACROBES","MACROSCOPIC MACHINES","MAJOR TRANSITION","MAJOR TRANSITIONS IN EVOLUTION","MAMMOTH","MANAKINS","MANY-TO-ONE","MARGINAL FITNESS","MARJORIE GRENE","MARKET","MARKOV BLANKETS","MARKOV MODEL","MARXIAN THOUGHT","MARXISM","MASSIVE MODULARITY","MATE PREFERENCES","MATECHOICE","MATERIAL CULTURE","MATERNAL EFFECT","MATHEMATICAL BIOLOGY","MATHEMATICAL EXPLANATION","MATHEMATICAL EXPLANATIONS","MATHEMATICAL MODEL","MATHEMATICAL MODELING","MATHEMATICAL MODELLING","MATHEMATICAL STATISTICS","MATHEMATICS","MATI NG BEHAVIOR","MATING STRATEGIES","MATIVISM","MATTHEN","MAXIMIZING AGENT","MEAN FITNESS","MEANING RESPONSE","MEANINGLESSNESS","MEASURABLE FACTORS","MEASUREMENT ERROR","MEASUREMENT OF HUMAN VARIATION","MEASUREMENT PROTOTYPE","MECHANICAL BIOLOGY","MECHANICAL EXPLANATIONS","MECHANICISM","MECHANISMS OF ADAPTATION","MECHANISTIC EXPLANATIONS","MECHANISTIC MODELING","MEDICAL EPISTEMOLOGY","MEIOSIS, MEIOTIC","MEMBRANES","MEMETICS","MEMORY TRANSFER","MENDELIAN DISEASES","MENDELIAN GENETICS","MENDELIAN LAWS","MENDELIAN RESEARCH PROGRAM","MENDELIANS","MENTAL CAUSATION","MENTAL DISORDER","MENTAL FACULTY","MENTAL MODELS","MENTAL STATE ATTRIBUTION","MENTAL STATES","MESOLIMBIC DOPAMINE SYSTEM","MESOSCOPIC MODELING","META-ETHICS","META-POPULATION","META-REPRESENTATION","METACOMMUNITIES","METACOMMUNITY","METAMEMORY","METAPHOR, MECHANISM","METAPHORS","METAPHYSICAL PROBLEM (PURPOSEFULNESS)","METAPHYSICAL RESEARCH PROGRAMS","METAPHYSICS OF BIOLOGY","METAPOPULATIONS","METASTASIS","METCHNIKOFF","METHOD","METHOD OF EXEMPLARS","METHODOLOGICAL EMPIRICISM","METHODOLOGY OF SIMULATIONS","METROLOGY","MICHAEL RUSE","MICROBIAL ACTIVITY","MICROBIAL CLASSIFICATION","MICROBIAL DIVERSITY","MICROBIAL EVOLUTION","MICROBIAL GENOMICS","MICRORNAS","MID-PLEISTOCENE","MILLIKAN’S BIOSEMANTICS","MILLSTEIN","MIMESIS","MIND ARCHITECTURE","MINDREADING HYPOHESIS","MINDSHAPING","MINIMAL CATEGORY CONCEPT","MINIMAL RESIDUAL DISEASE","MIRROR NEURONS","MIRRORS","MISIDENTIFICATION ERROR","MITHEN","MITOCHONDRIA","MITONUCLEAR ECOLOGY","MIXED STRATEGY","MOBILE GENETIC ELEMENTS","MODAL FORCE","MODAL RANGE","MODEL CONSTRUCTION","MODEL DOMAINS","MODEL ELEMENTS","MODEL TESTING","MODEL-DRIVEN SCIENCE","MODEL-WORLD RELATIONS","MODELING THEORY","MODELLING PLURALISM","MODELS AND MODELLING","MODERN EVOLUTIONARY SYNTHESIS","MODI","MODIFIER GENES","MODULAR","MODULES","MOLECULAR CHAPERONES","MOLECULAR DEVELOPMENT BIOLOGY","MOLECULAR DEVELOPMENTAL BIOLOGY","MOLECULAR EPIGENESIS","MOLECULAR MARKERS","MOLYNEUX'S QUESTION","MONKEYS","MONOMORPHIC CHARACTERS","MONOZYGOTIC TWIN","MOODS","MOOTED MODELS","MORAL DARWINISM","MORAL DISAGREEMENT","MORAL DIVERSITY","MORAL EPISTEMOLOGY","MORAL ERROR THEORY","MORAL INTUITION","MORAL JUDGMENT","MORAL JUDGMENTS","MORAL NEUROSCIENCE","MORAL OBJECTIVITY","MORAL PROGRESS","MORAL RELATIVISM","MORAL RESPONSIBILITY","MORAL SENTIMENTALISM","MORAL SKEPTICISM","MORAL SYSTEMS","MORAL THEORY","MORALIZATION PROBLEM","MORGAN","MORPHOGENETIC FIELDS","MORPHOGENETIC UNITS","MORTALITY SALIENCE","MOSAIC","MOTHER'S CURSE","MOTOR CONTROL","MULTI-RATE BRANCHING PROCESS","MULTICAUSALITY","MULTICELLULAR ORGANIZATION","MULTIDISCIPLINARITY","MULTILEVEL SELECTION THEORY","MULTILINGUALISM","MULTILOCUS SELECTION","MULTIPLE CAUSATION","MULTIPLE REALIZABILITY","MULTIPLE SEQUENCE ALIGNMENT","MULTIPLE-REALIZABILITY","MULTISCALE","MULTISPECIES POPULATIONS","MULTIVARIATE ANALYSIS","MUSEUMS","MUSIC ARCHAEOLOGY","MUSICAL PROTOLANGUAGE","MUTATIONISM","MUTATIONS","MUTUAL EVOLUTIONARY FEEDBACK","MUTUAL MANIPULABILITY","MUTUALITY","MYCORRHIZAL SYMBIOSIS","MYOGENIC","N.V. TIMOFÉEFF-RESSOVSKY","NANOTECHNOLOGY","NARRATIVE EXPLANATION","NARRATIVE IDENTITY","NATIONAL AND INTERNATIONAL SCIENCE","NATIONAL PARKS","NATIVE","NATURAL CLASSIFICATION","NATURAL GROUPS","NATURAL HISTORY COLLECTION","NATURAL JUSTICE","NATURAL NORM","NATURAL OBJECTS","NATURAL REGULATION","NATURAL RESOURCE POLICY","NATURAL SIGNS","NATURAL THEOLOGY","NATURAL-HISTORICAL METHOD OF PATIENT OBSERVATION","NATURALIST","NATURALISTIC ETHICS","NATURALISTIC JUSTIFICATION","NATURALIZED EPISTEMOLOGY","NATURALIZED INTENTIONALITY","NATURE DEBATE","NATURE OF SCIENCE","NATURE-BASED SOLUTIONS","NATURE-CULTURE DUALISM","NEANDER","NEANDERTHAL COGNITION","NEANDERTHAL EXTINCTION","NEGATIVE SELECTION","NEMATODE","NEO-DARWINIAN THINKING","NEOCORTEX","NERVOUS SYSTEM","NET OF LIFE","NETWORK ANALYSES","NEURAL CIRCUIT","NEURAL CIRCUITRY","NEURAL CONSTRUCTIVISM","NEURAL CORRELATES OF CONSCIOUSNESS","NEURAL EVOLUTION","NEURO-BIOLOGICAL INTEGRATION","NEUROANTHROPOLOGY","NEUROCOMPUTATION","NEUROCONSTRUCTIVISM","NEUROCULTURAL VIEW","NEURODYNAMIC DOMAIN","NEUROETHICS","NEUROETHOLOGY","NEUROIMAGING","NEURONS","NEUROPHILOSOPHY","NEUTRAL CHANGE","NEUTRAL MODEL","NEUTRALISM","NEW MECHANISTIC PHILOSOPHY","NEW MYSTERIANISM","NEWTON","NEXT GENERATION SEQUENCING","NFLTHEOREM","NICHE CONSTRUCTION THEORY","NICHE THEORY","NICKLES","NIKO TINBERGEN","NIKOLAI A. SEWERTZOFF","NOMADIC FORAGERS","NOMADIC PASTORALISTS","NOMICITY","NOMINALISM","NOMOTHETIC PALEOBIOLOGY","NON-EQUILIBRIUM","NON-HIERARCHICAL CLASSIFICATION","NON-INDIGENOUS","NON-INFERENTIAL COGNITION","NON-LINEAR DEVELOPMENTAL PATHWAYS","NON-LINEAR DYNAMICS, DYNAMICAL SYSTEMS THEORY","NON-LINEAR PHENOMENA","NON-LINEARS YSTEMS","NON-RATIONAL METHODS","NON-SPECIFIC EFFECTS","NONEEQUILIBRIUM THERMODYNAMICS","NONGENETIC","NONGENETIC INHERITANCE","NONHUMAN ANIMALS","NONHUMAN PRIMATES","NONLINEAR DYNAMICS","NONLINEAR GENE INTERACTIONS","NONSELF","NORMAL DISTRIBUTION","NORMAL FUNCTION","NORMATIVE COMMUNICATION","NORMATIVE FUNCTIONS","NORMATIVE PHILOSOPHY","NORMATIVE REALISM","NORMS OF MORALITY","NORMS OF REACTION","NOTHING-BUT-ISM","NOVEL ECOSYSTEM","NOVEL REPRESENTATIONS","NULL HYPOTHESES","NULL MODEL","NULL MODELS","NUTRIENT BALANCE","NUTRIENT BALANCING","NUTRITIONAL ECOLOGY","OAKS","OBJECTIVE VALUE","OBJECTIVE VALUES","OBLIGATE SYMBIOSIS","OBLIGATION","OCEANIC ISLANDS","OCTOPUS","OCTOPUS CONSCIOUSNESS","OMISSION","ONE-TO-MANY","ONTOGENETIC AND PHYLOGENETIC EXPLANATION","ONTOGENETIC REPATTERNING","ONTOGENY FALLACY","ONTOLOGICAL ASSUMPTIONS","ONTOLOGICAL COMMITMENTS","ONTOLOGICAL ECONOMY","ONTOLOGICAL EMERGENCE","ONTOLOGICAL PROBLEM (REDUCTIONISM)","OPERATIONAL TAXONOMIC UNITS","OPERATIONALISM","OPPOSING SELECTION","OPTIMAL FORAGING THEORY","OPTIMALITY MODEL","OPTIMALITY MODELING","OPTIMALITY MODELS","OPTIMIZATION PROGRAM","OPTOGENETICS","ORDERING","ORGANIC EARTH SCIENCE","ORGANIC SELECTION","ORGANICISM","ORGANISATION","ORGANISATIONAL APPROACH","ORGANISM AND ENVIRONMENT","ORGANISM FITNESS","ORGANISM-NICHE COORDINATION DYNAMICS","ORGANISMALITY","ORGANISMIC BIOLOGY","ORGANOGENESIS","ORGANOMICS","ORIGIN ESSENTIALISM","ORIGIN EXPLANATIONS","ORIGIN OF EUKARYOTES","ORIGIN OF EUKARYOTIC CELL","ORIGIN OF SEX","ORIGIN OF SPECIES","ORIGIN OF THE RIBOSOME","ORIGINS OF HUMAN COMMUNICATION","ORIGINS OF MULTICELLULARITY","ORIGINS OF TETRAPODS","ORNAMENT","ORNITHOLOGY","ORR","OSCAR HERTWIG","OSTENSION","OSTENSIVE-INFERENTIAL GRICEAN COMMUNICATION","OUTCOME","OVERALL RELATIVE CAUSAL IMPORTANCE","OVERIMITATION","OXYTOCIN","PALAEOARCHAEOLOGY","PALAEOECOLOGY","PALEOBOTANY","PALLIUM","PANGENESIS","PANSELECTIONISM","PANSPERMIA","PARADIGM SHIFT","PARALLELISM","PARALLELISMS","PARAMETERS","PARAPHYLY","PARASITE","PARATAXONOMY","PARENT-SPECIFIC GENE-EXPRESSION","PARKINSON'S DISEASE","PART-WHOLE","PARTS AND WHOLES","PATH ANALYSIS","PATH-SPECIFIC EFFECTS","PATHWAYS","PATRICIA SMITH","PATTERN CLADISTICS","PATTERN FORMATION","PATTERN VS. PROCESS","PAUL CHURCHLAND","PDP","PEAK SHIFT","PEER CONFORMITY","PEIRCE","PELORIC","PERCEPTUAL ADAPTATION","PERCEPTUAL CONSCIOUSNESS","PERCEPTUAL NEUROSCIENCE","PERCEPTUAL REPRESENTATION","PERE ALBERCH","PERIPATRIC SPECIATION","PERSON","PERSONAL IDENTITY","PERSPECTIVAL MODELLING","PERSPECTIVALISM","PERSPECTIVES","PERSPECTIVISM","PERTURBATION","PETER CARRUTHERS","PHANTOM LIMBS","PHARMACOLOGY","PHASE SPACE","PHENETICISM","PHENOMENA","PHENOMENIST PROBLEM (ESSENTIALISM)","PHENOMENOLOGY","PHENOTYPE-ENVIRONMENT INTERACTIONS","PHENOTYPIC EVOLUTION","PHENOTYPIC TRAIT","PHENOTYPIC TRANSMISSION","PHILOSOPHER'S PARADOXES","PHILOSOPHICAL CONCERNS","PHILOSOPHICAL METHODOLOGY","PHILOSOPHY IN SCIENCE","PHILOSOPHY OF HISTORY","PHILOSOPHY OF IMMUNOLOGY","PHILOSOPHY OF MUSIC","PHILOSOPHY OF PALEONTOLOGY","PHILOSOPHY OF PSYCHIATRY","PHILOSOPHY OF TECHNOLOGY","PHILOSOPHY OF THE ARTS","PHOBIA","PHOTOGRAPH","PHOTOGRAPHY","PHYLOGENETIC ICONS","PHYLOGENETIC NON-INDEPENDENCE SPATIAL AUTOCORRELATION","PHYLOGENETIC SPECIES CONCEPT","PHYLOGENETIC TAXONOMY","PHYLOGENETICSYSTEMATICS","PHYLOGENY FALLACY","PHYLOGENY-BASED COMPARISON","PHYSICAL LAWS","PHYSICALISM","PIAGET","PICERAS","PICTORIAL REPRESENTATION","PIERRE DUHEM","PIONEER STUDIES","PKU","PLACEBO CONTROLLED TRIAL","PLACEBO EFFECTS","PLANNING","PLANT COGNITION","PLANT REPRESENTATION","PLANTS","PLEISTOCENE PARADOX","PLEOMORPHISM","PLURALISM SEXUAL REPRODUCTION","POLARITY DETERMINATION","POLICYMAKING","POLITICAL EGALITARIANISM","POLYGAMY","POLYGENIC DISEASES","POLYTHETIC GROUPS","POLYTOMY PRIOR","POPPERIANISM","POPULATION CAUSATION","POPULATION CONCEPT","POPULATION CYCLES","POPULATION DYNAMICS","POPULATION GROWTH","POPULATION LEVEL CAUSATION","POPULATION SIZE","POPULATIONAL HERITABILITY","POSITIVE WELFARE","POSITIVISM","POSSIBLE WORLDS","POST-GENOMIC","POSTDICTION","POWER-STROKE VERSUS BROWNIAN RATCHET","PP-PTSD","PPD","PRACTICAL MEANS","PRAGMATIC","PRAGMATICS","PRE-DARWINIAN","PREBIOTIC EVOLUTION","PREBIOTIC WORLD","PRECAUTIONARY PRINCIPLE","PRECISION","PREDICTION ERRORS","PREDICTION8REALISM","PREFERENCE ALTRUISM","PREGNANCY","PRESENCE AND ABSENCE HYPOTHESIS","PRESENCE-AND-ABSENCE HYPOTHESIS","PRESERVATION","PRESERVATION/GROWTH OF COMPLEXITY","PRICE EQUATIONS","PRICE’S EQUATION","PRIMATES","PRIMITIVE REPRESENTATION","PRINCIPAL PRINCIPLE","PRINCIPLE","PRINCIPLE OF NATURAL SELECTION","PRINCIPLES","PRINCIPLES OF CHEMISTRY","PRISONER’S DELIGHT","PRISONER’S DILEMMA","PRIVILEGING CAUSES","PROBABILISTIC EXPLANATIONS","PROBABILISTIC SAMPLING","PROBABILISTIC SENSITIVITY","PROBLEM AGENDA","PROBLEM SOLVING","PROBLEMS","PROCESS","PROCESS BIOLOGY","PROCESS ONTOLOGY","PROCESS PHILOSOPHY","PRODUCTIVITY","PROFESSIONAL PHILOSOPHY","PROFESSIONAL SOCIETIES","PROGRESSION","PROJECTIBILITY","PROKARYOTE","PROKARYOTE EVOLUTION","PROMISING","PROPAGATING ORGANIZATION","PROPENSITIES","PROPER NAMES","PROPERTIES","PROPERTY","PROSOCIALITY","PROSPECTION","PROSTHETIC VISION","PROSTHETICS","PROTEIN FOLDING","PROTEIN FUNCTION","PROTEIN STRUCTURE","PROTEINS","PROTEIN–PROTEIN INTERACTION NETWORKS","PROTEOMICS","PROTISTS","PROTO ETHOLOGISTS","PROTO-LANGUAGE","PROTOCELLS","PROTOLANGUAGE","PROTOLIVING SYSTEMS","PROTOMETABOLISM","PROTOMUSIC","PROVISIONALITY","PROXIMATE","PROXIMATE AND ULTIMATE CAUSATION","PROXIMATE AND ULTIMATE CAUSES","PROXIMATE CAUSATION","PROXIMATE V. ULTIMATE CAUSATION","PROXIMATE-ULTIMATE","PROXIMATE-ULTIMATE CAUSE DISTINCTION","PROXIMATE–ULTIMATE DISTINCTION","PSEUDO-INTEGRATION","PSEUDO-VERTICAL TRANSMISSION","PSEUDOGENES","PSYCHIATRY","PSYCHO-HISTORICAL THEORY","PSYCHOANALYSIS","PSYCHOBIOLOGY","PSYCHOEVOLUTION","PSYCHOLOGICAL ADAPTATIONS","PSYCHOLOGICAL CATEGORIES","PSYCHOLOGICAL PREDISPOSITION","PSYCHOLOGICALLY MEDIATED COMMUNICATION","PSYCHONEURAL REDUCTION","PUBLIC GOODS GAME","PUBLIC GOODS GAMES","PUNCTUATED EQUILIBRIA THEORY","PUNCTUATED EQUILIBRIUM","PUNCTUATED EVOLUTION","PUNNETT SQUARES","PURIFYING SELECTION","PURPOSE","PUSHMI-PULLYU REPRESENTATION","QUALITATIVE ANALYSIS","QUALITATIVE MODELING","QUALITATIVE TRAITS","QUANTITATIVE TRAITS","QUANTITIVE GENETICS","QUINEIAN","QUORUM SENSING","R. A. FISHER","R. C. LEWONTIN","R. WRIGHT","R.A. FISHER","R.C. LEWONTIN","RACE SOCIAL CONSTRUCTIVISM","RACIAL CATEGORIES","RACIAL NATURALISM","RACIALIZATION","RACISM","RAMET","RANDOM COLONIZATION","RANDOM DRIFT","RANDOM GENETIC DRIFT","RANDOM MUTATIONS","RANDOM NK BOOLEAN NETWORK","RANDOM WALK","RANDOMISED CONTROLLED TRIALS","RANDOMIZATION","RANDOMIZED CONTROLLED TRIALS","RAPID EVOLUTION","RATIONAL BEHAVIOR","RATIONAL CHOICE","RATIONAL RECONSTRUCTION","RCT","REASONING STRATEGY","RECEIVER","RECEIVER MODELS","RECEIVER-RELATIVITY","RECESSIVE","RECOGNITION CONCEPT","RECONSTRUCTION","RECURSIVE SYNTAX","REDUNDANCY","REFERENCE CONDITION","REFLECTIVE EQUILIBRIUM","REFLEX","REFLEXES","REGRESSION","REGRESSION EQUATIONS","REGRESSION EXPLANATION","REGRESSION FALLACY","REGRESSION TO THE MEAN","REGRESSION TOWARD THE MEAN","REGULAR CAUSES","REGULARITY EXPLANATION","REGULATORY CENTER","REGULATORY GENES","REGULATORY REGION","REICHENBACH","REINFORCEMENT","REINFORCEMENT LEARNING","RELATIONAL FRAMEWORK","RELATIONALITY","RELATIONSHIP","RELATIVE SIGNIFICANCE","RELATIVISM","RELATIVITY","RELIABILITY CHALLENGE","RELIABILITY MODELS","REMEMBERING","REPAIR","REPLICATORS","REPLICATOR–INTERACTOR","REPRESENTATION PROBLEM","REPRESENTATIONAL ACCESS","REPRESENTATIONAL COMPLEXITY","REPRESENTATIONAL CONTENT","REPRESENTATIONALISM","REPRESENTATIVE SAMPLE","REPRESSION","REPRODUCER","REPRODUCERS","REPRODUCTIVE ALTRUISM","REPRODUCTIVE COMPENSATION","REPRODUCTIVE ISOLATION","REPRODUCTIVE SKEW","RESEARCH","RESEARCH COMMUNITY","RESEARCH FRAMEWORK","RESEARCH PRACTICE","RESEARCH PROGRAM","RESEARCH PROGRAMS","RESEARCH STRATEGIES","RESEARCH TECHNIQUES","RESILIENCE","RESOURCES","RESPIRATION","RESTORATION ECOLOGY","RESURRECTION BIOLOGY","RETICULATE EVOLUTION","REVENGE","REVERSE TRANSCRIPTION","RIBONUCLEIC ACID (RNA)","RIBOZYME","RICH CLUB","RICHARD BOYD","RICHARDS","RICHERSON","RISK","RISK-SENSITIVE FORAGING THEORY","RITUALISATION","RITUALISTIC/MIMETIC CULTURE","ROBERT BRANDON","ROBERT MACARTHUR","ROBERT RICHARDS","ROBERT TRIVERS","ROBOTICS","ROBUST CATEGORY CONCEPT","ROLE FUNCTION","RONALD FISHER","ROSENBERG","ROUSSEAU","RUSSO-WILLIAMSON THESIS","S-REPRESENTATION","S.J. GOULD","SAMPLES","SAN MARCO","SARAH HRDY","SARS-COV-2","SATISFACTION CONDITIONS","SATISFICING","SAUSSURE","SCAFFOLDED REPRODUCTION","SCAFFOLDS","SCENARIO VISUALIZATION","SCIENCE AND IDEOLOGY","SCIENCE AND POLITICS","SCIENCE AND RELIGION","SCIENCE OF FORM","SCIENCE STUDIES","SCIENCE TEXTBOOK","SCIENTIFIC CATEGORIES","SCIENTIFIC COGNITIVISM","SCIENTIFIC CONCEPTS","SCIENTIFIC CONTROVERSIES","SCIENTIFIC DIAGRAMS","SCIENTIFIC INQUIRY","SCIENTIFIC INSTITUTIONS","SCIENTIFIC INTEGRATION","SCIENTIFIC METAPHORS","SCIENTIFIC METHOD","SCIENTIFIC MODELING","SCIENTIFIC NATURALISTIC ETHICS","SCIENTIFIC PLURALISM","SCIENTIFIC REPRESENTATION","SCIENTIFIC RESEARCH PROGRAM","SCIENTIFIC SUCCESS","SCIENTIFIC THEORIES","SCIENTIFIC UNDERSTANDING","SCIENTIFIC UNIFICATION","SCRUB JAYS","SECOND LAW OF THERMODYNAMICS","SEEING","SEGREGATION","SELECTED EFFECT","SELECTED EFFECTS","SELECTED FUNCTIONAL TYPES","SELECTED FUNCTIONS","SELECTED-EFFECTS THEORY OF FUNCTIONS","SELECTION AGAINST","SELECTION EXPLANATION","SELECTION FOR","SELECTION OF","SELECTION PRESSURE","SELECTION PROCESS","SELECTION PROCESSES","SELECTION THEORY","SELECTIVE BREEDING","SELECTIVE EXPLANATION","SELECTIVE HOMOGENEITY AND HETEROGENEITY","SELECTIVE NICHE CONSTRUCTION","SELF MAINTENANCE","SELF ORGANIZATION","SELF VERSUS NON-SELF DISCRIMINATION","SELF-ASSEMBLY","SELF-CONSCIOUSNESS","SELF-DECEPTION","SELF-DOMESTICATION","SELF-KNOWLEDGE","SELF-ORGANISATION","SELF-PRESERVATION","SELF-RECOGNITION","SELF-REPLICATION","SELFISH","SELFISH DNA","SELFISH ORGANISM","SELLARS","SEMANTIC","SEMANTIC APPROACH","SEMANTIC CONCEPTION","SEMANTIC CONCEPTION OF THEORIES","SEMANTIC POINTER","SEMIOSIS","SEMIOTIC REALISM","SENDER-RECEIVER","SENDER–RECEIVER FRAMEWORK","SENSORIMOTOR ORGANIZATION","SENSORIMOTOR SYSTEM","SENSORY ATTENUATION","SENSORY ECOLOGY","SENSORY MODALITY","SENSORY SUBSTITUTION","SENTENTIAL MODEL OF COGNITION","SEQUENCE ALIGNMENT","SEQUENCE LEARNING","SERENDIPITY","SERIAL HOMOLOGY","SET","SETS","SEX DIFFERENCES","SEXUAL AUTONOMY","SEXUAL COERCION","SEXUAL ORIENTATION","SEXUALITY","SEXUALLY ANTAGONISTIC SELECTION","SFMRI","SHAME","SHANNON AND WEAVER","SHANNON INFORMATION","SHANNON THEORY","SHARED ANCESTRY","SHARED TRAITS","SHEEP BREEDING","SHERWIN CARLQUIST","SHIFTING SELECTION","SIGN DIGRAPH","SIGNAL","SIGNAL TRANSDUCTION","SIGNALLING","SIGNALS","SILURIFORMES","SIMILAR ENVIRONMENTS","SINCLAIR","SINGLE-CELL RECORDINGS","SITUATED COGNITION","SITUATEDNESS","SIXTH MASS EXTINCTION","SKILL","SKILLS","SLEEP","SLEEPING BEAUTY","SMALL RNA INHERITANCE","SOCIAL ADAPTATION","SOCIAL BEHAVIOR","SOCIAL CHANGE","SOCIAL CONSTRUCTION","SOCIAL CONSTRUCTIONISM ABOUT RACE","SOCIAL CONSTRUCTIVISM","SOCIAL CONTRACT","SOCIAL CONTRACT THEORY","SOCIAL EPISTEMOLOGY","SOCIAL INSTINCTS","SOCIAL INSTITUTIONS","SOCIAL MORALITY","SOCIAL ORGANIZATION","SOCIAL ORGANIZATION OF SCIENCE","SOCIAL PLAY","SOCIAL REGULATION","SOCIAL REINFORCEMENT","SOCIAL SCIENCE","SOCIAL SCIENCE RESEARCH","SOCIAL SCIENCES","SOCIAL SKILLS","SOCIAL STUDIES OF SCIENTIFIC KNOWLEDGE","SOCIAL TRANSMISSION","SOCIALIST ECONOMIC REFORMS","SOCIALLY MEDIATED REINNOVATIONS","SOCIOBIOLOGY OF SCIENCE","SOCIOLINGUISTICS","SOCIOLOGY OF SCIENCE","SOMATIC MARKER HYPOTHESIS","SOMATIC MUTATION THEORY","SONG AND LANGUAGE","SOUL","SOURCE-SINK DYNAMICS","SOURCES OF CONTINGENCY","SOURCES OF DIRECTIONALITY","SPANDREL","SPATIOTEMPORAL CONTINUITY","SPATIOTEMPORAL SAMPLING","SPC","SPECIAL SCIENCES","SPECIALIZATION","SPECIES CATEGORY","SPECIES CLASSIFICATION","SPECIES DELIMITATION","SPECIES DESIGN","SPECIES DISCRIMINATION","SPECIES OF THOUGHT","SPECIES PLURALISM","SPECIES SORTING","SPECIES-AS-INDIVIDUALS","SPECIESISM","SPECIMENS","SPENCER","SPINAL CORD","SPINAL CORD INJURY","STABLISING SELECTION","STAGE LAWS","STALEMATES","STALIN","STANCES","STANDARD EVOLUTIONARY THEORY","STANDARD SOCIAL SCIENCE MODEL","STANDARDIZATION","STANDARDS OF ASSESSMENT","STAR-TREE PARADOX","STATE CONSCIOUSNESS","STATE SPACE","STATES OF MIND","STATISTICAL APPROACHES","STATISTICAL GRAPHS","STATISTICAL MECHANICS","STATISTICAL PATTERN","STATISTICAL RETURN TENDENCY","STATISTICAL SIGNALS","STATISTICAL THEORIES OF FUNCTIONS","STATISTICALLY ABSTRACTIVE EXPLANATIONS","STATISTICS IN BIOLOGY","STEGMANN","STEM CELL RESEARCH","STEMNESS","STEPHEN J. GOULD","STERELNY","STOCHASTIC MODELS","STOCHASTIC MOTION","STONE KNAPPERS","STONE NAPPING","STONE TOOL TECHNOLOGY","STRAINS","STRATEGIC COST","STRATEGIES","STRATIFYING HUMAN POPULATIONS","STRATIGRAPHY","STRATOCLADISTICS","STRATOTYPE","STRENGTH OF ATTITUDE","STRESS RESPONSE","STRICT LAWS","STRONG IMMUNITY","STRONG ONTOLOGICAL EMERGENCE","STRUCTURAL AND FUNCTIONAL GENETICS","STRUCTURAL BIOLOGY","STRUCTURE–FUNCTION MAPPING","STRUCTURING-TRIGGERING CAUSE DISTINCTION","STRUGGLE FOR LIFE","STYLE OF THEORIZING","STYLES OF REASONING","STYLES OF SCIENTIFIC RESEARCH","SUB-DOXASTIC","SUB-DOXASTIC STATES","SUBJECTIVE EXPERIENCE","SUBSPECIES","SUCCESSION","SUNDARBANS","SUPERORGANISMS","SUPERVENIENCE AND CAUSATION","SUPERVENIENCE EXPLANATIONS","SUPPLY-SIDE ECOLOGY","SURVIVAL","SYMBOL-MINDEDNESS","SYMBOLIC LANGUAGE","SYMBOLIC NOTATION","SYMBOLIC REFERENCE","SYMBOLS","SYMONS","SYMPATHY","SYNAPTIC MODIFIABILITY","SYNCRETISM","SYNERGY","SYNTACTIC MOVEMENT","SYNTHESIS OF EVOLUTION","SYNTHETIC DARWINISM","SYNTHETIC MORPHOLOGY","SYNTHETIC PHILOSOPHY","SYNTHETIC THEORY","SYNTROPHY","SYSTEM","SYSTEM SECOLOGY","SYSTEMATICS ASSOCIATION","SYSTEMIC FUNCTION","SYSTEMIC METAPHORS","SYSTEMS","SYSTEMS THEORY","T. H. MORGAN","T.H. MORGAN","TARDIGRADE","TARGET SYSTEM","TARGETS OF SELECTION","TATUM","TAXIS","TAXON ESSENTIALISM","TAXON HIERARCHY","TAXONOMIC DISORDER","TAY SACHS DISEASE","TCA CYCLE","TEACHING","TECHNIQUES","TECHNOLOGICAL ARTIFACTS","TELEOLOGICAL","TELEOSEMANTIC GENETIC REPRESENTATION","TELEOSEMANTIC THEORIES OF CONTENT","TELEOSTEI","TEMPERATURE MEASUREMENT","TEMPORALITY","TENSE","TERATOLOGY","TERROR MANAGEMENT THEORY","TESTING","TETRACHROMACY","TEXT","TEXT MINING","THE ABSENCE OF REVERSE TRANSLATION","THE ACTIVE ROLE OF THE ORGANISM","THE CENTRAL DOGMA","THE CONDITIONS FOR GENE-CENTRISM","THE EXTENDED SYNTHESIS","THE MUTUAL INFLUENCE BETWEEN BIOMEDICINE AND ITS CULTURAL ENVIRONMENT","THE TREE OF LIFE","THE UNIVERSAL ETHOLOGY CHALLENGE","THE WEISMANN BARRIER","THEOLOGY","THEORETICAL INTEGRATION","THEORETICAL MODEL","THEORETICAL MODELS OF ADAPTIVE BEHAVIOURS","THEORETICAL PERSPECTIVE","THEORETICAL TERMS","THEORIES OF EVOLUTION","THEORIES OF MIGRATION","THEORY CHANGE","THEORY OF CHOICE","THEORY OF CONTENT","THEORY OF DESCRIPTIONS","THEORY OF HYBRIDS","THEORY OF ORGANIZATION","THEORY OF REFERENCE","THEORY RECEPTION","THEORY STRUCTURE","THEORY TESTING","THEORY TRANSFER","THEORY-LADENNESS OF FACTS","THEROPODS","THINKING FOR SPEAKING","THIRD REICH","THOMAS HUXLEY","THOUGHT EXPERIMENT","THOUGHT EXPERIMENTS","THREAT AVOIDANCE","THREEFOLD PARALLELISM","THRESHOLDS","THRILL-SEEKING","TIGN","TIME","TIMESERIES","TIPPING POINTS","TISSUE ORGANIZATION FIELD THEORY","TOOBY","TOOL","TOOL PRODUCTION","TOOL-USAGE","TOP-DOWN CAUSATION","TOPIC MODELING","TOTAL INFORMATION","TOULMIN SCHEMAS","TRACKING","TRACTABILITY","TRADE","TRADE-OFFS","TRADITION","TRADITIONAL ECOLOGICAL KNOWLEDGE","TRAINING","TRAIT AND FITNESS VARIATION","TRAIT FITNESS","TRAIT GROUPS","TRANSACTIVE MEMORY","TRANSCENDENTAL CONSTITUTION","TRANSCRIPT FUNCTION","TRANSFORMATIONAL ANALOGUES","TRANSFORMATIONAL EVOLUTION","TRANSFORMATIVE VS. ADDITIVE ACCOUNTS OF HUMAN COGNITION","TRANSITIONS","TRANSITIONS IN INDIVIDUALITY","TRANSITIONS IN THE LEVELS OF SELECTION","TRANSLATION","TRANSMISSION/DISEQUILIBRIUM","TRANSMUTATION","TREE BALANCE","TREE OF CELLS","TREE SHAPE","TREE THINKING","TREE TOPOLOGY","TREE-THINKING","TRIADIC SYSTEM","TRIANGULATION","TRUST","TRUTH","TUATARA","TUMORS","TURKANA","TURN-OVER PULSE","TVSS","TWENTIETH CENTURY AMERICAN BIOLOGY","TWIN STUDIES","TWO CONTEXTS DISTINCTION","TYPE METHOD","TYPIFICATION","ULTIMATE","ULTIMATE AND PROXIMATE EXPLANATION","ULTIMATE CAUSATION","ULTIMATE JUSTIFICATION","ULTIMATE VS. PROXIMATE","ULTIMATE VS. PROXIMATE BIOLOGY","ULTRASOCIALITY","UNCERTAINTY MINIMIZATION","UNDERDETERMINATION OF BIOLOGY BY PHYSICS","UNDERDETERMINATION OF THEORY BY EVIDENCE","UNIFORM DISTRIBUTION","UNIFORMITARIANISM","UNINTENDED CONSEQUENCES","UNIQUE EVOLUTION","UNIQUE HIERARCHY OF NATURAL FORMS","UNIT-CHARACTER","UNITS","UNITS OF BIODIVERSITY","UNITS OF INHERITANCE","UNITY OF CONSCIOUSNESS","UNIVERSAL","UNIVERSAL ASSOCIATIVE LEARNING","UNIVERSAL GRAMMAR","UNIVERSAL SELECTION","UNIVERSAL THEORY OF LIFE","UNPREDICTABILITY","UNTO OTHERS","UNUSUAL EVENTS","UPDATING MECHANISM","UPPER PALEOLITHIC","UTILITARIANISM","VAGUENESS","VALUING NATURE","VAN FRAASSEN","VARIABILITY","VARIANCE","VARIATION IN BEHAVIOR","VARIATION OF INFORMATION","VARIATIONAL ACTIVE INFERENCE","VASOPRESSIN","VEHICLE","VERA CAUSAE","VERISIMILITUDE","VERTICAL","VICTOR FRANZ","VIROLOGY","VISION","VISUAL PERCEPTION","VISUAL PERCEPTION IN VERTEBRATES","VISUAL REPRESENTATION","VISUALS","VITALISM","VIVIPARITY","VIVISECTION","VOCAL IMITATION","VOCALIZATION","VOLES","VOLVOX","VORONOI DIAGRAMS","VOUCHERS","W. HENNIG","WADE","WALLER","WALTER ZIMMERMANN","WARREN MCCULLOCH","WATER MEMORY","WEAK ALTRUISM","WEAK ETIOLOGICAL FUNCTIONS","WEB OF LIFE","WEIRD LIFE","WEISBERG","WELCH","WELFARE BIOLOGY","WESTERMARCK","WESTERMARCK EFFECT","WET-LAB RESEARCH","WHOLE-ANIMAL MEASURE","WHOLE-PART RELATIONSHIPS","WIDE CONTENT","WILD ANIMAL WELFARE","WILLIAMS SYNDROME SPECIFIC LANGUAGE IMPAIRMENT","WILSON","WINSOR","WOOLCOCK","WORK","WORK CYCLE","WORKING MEMORY","WORLDVIEW","X-PHI","X-RAY DIFFRACTION CRYSTALLOGRAPHY","XENOBOTS","YELLOWSTONE","ZAHAVI, A.","ZERO-FORCE LAW","ZERO-FORCE STATE","ZONE OF LATENT SOLUTIONS","ZOOCENTRISM","ZOOGEOGRAPHY","ZOOLOGY","‘INTERMEDIARY PRAGMATICS’","“THE STRAW MAN” FALLACY"],"freq":[168,93,49,47,43,41,40,35,32,31,29,28,28,28,27,26,25,25,25,24,24,23,23,23,22,21,21,21,21,21,20,20,20,18,17,17,17,17,17,17,17,16,16,16,16,15,14,14,14,13,13,13,13,13,13,12,12,12,12,12,12,12,12,11,11,11,11,11,11,11,11,11,11,11,11,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"fontFamily":"Segoe UI","fontWeight":"bold","color":"random-dark","minSize":0,"weightFactor":0.7499999999999999,"backgroundColor":"white","gridSize":0,"minRotation":-0.7853981633974483,"maxRotation":0.7853981633974483,"shuffle":true,"rotateRatio":0.4,"shape":"circle","ellipticity":0.65,"figBase64":null,"hover":null},"evals":[],"jsHooks":{"render":[{"code":"function(el,x){\n                        console.log(123);\n                        if(!iii){\n                          window.location.reload();\n                          iii = False;\n\n                        }\n  }","data":null}]}}</script>
+<script type="application/htmlwidget-sizing" data-for="htmlwidget-fdea2e1513179b16fa12">{"viewer":{"width":450,"height":350,"padding":0,"fill":true},"browser":{"width":960,"height":500,"padding":0,"fill":true}}</script>
+</body>
+</html>

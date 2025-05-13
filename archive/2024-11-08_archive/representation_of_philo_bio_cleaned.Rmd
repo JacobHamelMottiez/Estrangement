@@ -1,0 +1,1452 @@
+---
+title: "Representation of philosophy and biology"
+author: "Jacob Hamel-Mottiez"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+
+    toc: true
+    toc_float:
+      collapsed: true
+    code_folding: hide
+runtime: shiny
+---
+
+<a href="#" role="button" onclick="toggleLight();return false;" id="light-toggle" class="contrast">🌗 Dark</a>
+
+```{js, echo = FALSE}
+// function to toggle between light and dark mode
+// adapted from https://github.com/dandalpiaz/markdown-pages
+function toggleLight(forceDark) {
+  // get current theme (default to "light" if not found)
+  let current_theme = localStorage.getItem('mode') || 'light';
+  // set new theme to "dark" if current is "light"
+  let new_theme = (current_theme === 'light') ? 'dark' : 'light';
+  // special case: if "forceDark", set new theme to "dark"
+  if (forceDark) {
+    current_theme = 'light';
+    new_theme = 'dark';
+  }
+  // HTML document element
+  const htmlEl = document.documentElement;
+  // add class name for new theme to HTML element
+  htmlEl.classList.add(new_theme);
+  // remove class name of old theme from HTML element
+  htmlEl.classList.remove(current_theme);
+
+  // set local storage to new theme
+  localStorage.setItem('mode', new_theme);
+
+  // update theme switcher toggle with id of "light-toggle"
+  if (new_theme === 'dark') {
+    document.getElementById('light-toggle').innerHTML = '🌗 Light';
+  } else {
+    document.getElementById('light-toggle').innerHTML = '🌗 Dark';
+  }
+}
+
+// set theme on load, adapted from https://radek.io/posts/secret-darkmode-toggle/
+// first check "prefers-color-scheme"
+const osPreference = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+// next check local storage
+const preferredTheme = localStorage.getItem('mode') || osPreference;
+// if preferred theme is dark, force theme change, else leave as-is
+if (preferredTheme === 'dark') {
+  toggleLight(true);
+}
+```
+
+```{css, echo = FALSE}
+/* specific colors for light and dark mode
+   adapted from https://radek.io/posts/secret-darkmode-toggle/ */
+:root {
+  --background-color: #ffffff;
+  --font-color: #24272B;
+  /* can set other variables here as needed e.g. secondary font, secondary background etc. */
+}
+:root.dark {
+  --background-color: #24272B;
+  --font-color: #f6f6f6;
+}
+
+/* dark/light mode toggle link */
+#light-toggle {
+  /* top right-hand corner of page */
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 5px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none !important;
+}
+
+/* hacky dark mode code blocks */
+html.dark pre {
+  filter: invert(0.8);
+}
+/* make striped rows less conspicuous 
+   depending on version of data tables, may need one or more of the following selectors */
+html.dark .table-striped > tbody > tr:nth-of-type(odd),
+html.dark table.dataTable.stripe tbody tr.odd,
+html.dark table.dataTable.display tbody tr.odd {
+  background-color: #f9f9f911;
+}
+/* hover rows less conspicuous */
+html.dark .table-hover > tbody > tr:hover,
+html.dark table.dataTable.hover tbody tr:hover,
+html.dark table.dataTable.display tbody tr:hover {
+  background-color: #f5f5f522 !important;
+}
+
+
+/* override colors in R Markdown theme, with variables */
+body {
+  /* colors from variables - need "!important" so takes priority over settings elsewhere */
+  background: var(--background-color) !important;
+  color: var(--font-color) !important;
+}
+/* headings */
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+  color: var(--font-color) !important;
+}
+
+/* data tables div */
+div.datatables {
+  color: var(--font-color) !important;
+}
+/* table rows */
+table.dataTable tbody tr {
+  background-color: var(--background-color);
+}
+/* number of records */
+.dataTables_info {
+  color: var(--font-color) !important;
+}
+/* pagination for table */
+li.paginate_button > a {
+  background-color: var(--background-color) !important;
+  color: var(--font-color) !important;
+}
+/* disabled pagination buttons, less emphasis */
+li.paginate_button.disabled > a {
+  opacity: 0.7 !important;
+}
+```
+
+# Introduction
+
+The goal of this file is to document what has been done so far in my *Stage en méthodes computationnelles* under the supervision of Louis Renaud-Desjardins. Mainly, you will find in this file explanation of methodological choices for our work and the main results we got so far.
+
+Special thanks to François Claveau, Pierre-Olivier Méthot, Louis Renaud-Desjardins, Thomas Pradeu and Maël Lemoine for their support on this projet.
+
+For any questions or issues, please write at [jacob.hamel-mottiez.1\@ulaval.ca](mailto:jacob.hamel-mottiez.1@ulaval.ca){.email}.
+
+```{r setup, include = FALSE}
+
+package_list <- c(
+  "here", # use for paths creation
+  "tidyverse",
+  "bib2df", # for cleaning .bib data
+  "janitor", # useful functions for cleaning imported data
+  "rscopus", # using Scopus API
+  "biblionetwork", # creating edges
+  "tidygraph", # for creating networks
+  "ggraph", # plotting networks
+  "devtools", 
+  "DT", # for clean and interactive datatable in .rmd. 
+  "countrycode", 
+  "refinr",
+  "data.table",
+  "highcharter", 
+  "igraph", 
+  "d3r", 
+  "wordcloud2", 
+  "wordcloud",
+  "lubridate",
+  "RColorBrewer", 
+  "gifski", 
+  "patchwork",
+  "particles",
+  "network", 
+  "plotly",
+  "ggforce",
+  "visNetwork",
+  "scales",
+  "viridis", 
+  "tidygraph",
+  "readxl",
+  "maps",
+  "igraph",
+  "ggraph",
+  "knitr"
+)
+
+# FUNCTION TO INSTALL AND LOAD LIBRARIES. 
+for (p in package_list) {
+  if (p %in% installed.packages() == FALSE) {
+    install.packages(p, dependencies = TRUE)
+  }
+  library(p, character.only = TRUE)
+}
+
+```
+
+```{sql SCRIPT, eval=FALSE}
+/****** Fetching relevant corpora
+Project: Biology in philosophy
+created by Jacob Hamel-Mottiez and Louis Renaud-Desjarding on 2024-09-23. 
+
+// SETUP //
+We run many tests on SQL Server. The cleanest data output is when you execute 
+the query, right-click on the result and save it as a .csv file. 
+
+You can easily save on onedrive and fetch the data elsewhere
+
+// DATA STRUCTURE //
+We are working with Web of Science (clarivate) database via Albator. The
+access is provided
+by Vincent Lariviere.
+
+All the information linking cited and citing documents is established via a key called "OST_BK" which is an unique identifier. 
+
+There are two ways ways in which you can deal with the data. 
+  1) Take the .dbo which is from WoS ;  
+  2) Take the .pex which is from OST. 
+
+What should influence your choice is the following methodological considerations : 
+The table that links the cited documents with the citing documents is constructed as follow :   
+  1) The cited document must be present in the WOS (Web of Science) corpus.
+  2) The cited document must be an article, a note, or a review (with a `code_document` less than 4).
+  3) The documents citing or cited must have been published between 1900 and the present day.
+  4) The documents citing or cited must have at least one author listed in the `summary_name` table.
+
+In short, if you want all the documents cited for a given citing journal, take .dbo. If you only want the scientific articles, then take .pex because it is cleaner. 
+
+
+// COMPLETNESS OF THE DATA //
+When looking at B&P (Code_Revue = 2229), we were able to fetch a total of 67 774 cited documents. 
+When we looked at which got a Cited_Title, it dropped to 43 828.
+When we looked at which had a Cited_Title and an OST_BK, it dropped to 36 335 (~ 31 436 lost in total).  
+
+
+******/
+
+-- alternative table (to verify with Louis) 
+-- The idea was to select only relevant column in art. and to add Etype doc. 
+SELECT art.OST_BK
+  , art.Annee_Bibliographique as citing_year
+  , art.UID
+  , art.Titre
+  , art.Nb_Reference
+  , doc.EType_Document as Type_Document
+  , rev.Revue
+  , rev.Abbrev_11 as Abrev
+  , abst.Abstract as Abstract
+ FROM [WoS].[pex].[Article] as art
+  LEFT JOIN [WoS].[pex].[Liste_revue] as rev 
+  on art.Code_Revue = rev.Code_Revue
+  LEFT JOIN [WoS].[dbo].[Abstract] as abst
+  on art.OST_BK = abst.OST_BK
+  LEFT JOIN [WoS].[pex].[Liste_Document] as doc
+  on art.Code_Document = doc.Code_Document
+  WHERE art.Code_Revue = 2229
+
+-- Citing documents (articles published in B&P)
+SELECT art.*
+  ,Revue
+  ,Abbrev_11
+  ,abst.Abstract
+  FROM [WoS].[pex].[Article] as art
+  LEFT JOIN [WoS].[pex].[Liste_revue] as rev
+  on art.Code_Revue = rev.Code_Revue
+  LEFT JOIN [WoS].[dbo].[Abstract] as abst
+  on art.OST_BK = abst.OST_BK
+  WHERE art.Code_Revue = 2229
+
+-- Author citing (the authors' of citing documents)
+SELECT art.OST_BK
+	, aut.First_Name
+	, aut.Last_Name
+	, aut.Seq_No
+  FROM [WoS].[pex].[Article] as art
+  LEFT JOIN [WoS].[dbo].[Summary_Name] as aut
+  on art.OST_BK = aut.OST_BK
+  WHERE art.Code_Revue = 2229
+
+-- Cited documents (references of citing documents)
+SELECT ref.[OST_BK]
+      ,ref.[UID]
+	  ,id.[OST_BK] as OST_BK_Ref
+      ,ref.[UID_Ref]
+      ,ref.[Cited_Author]
+      ,ref.[Year]
+      ,ref.[Cited_Title]
+      ,ref.[Cited_Work]
+  FROM [WoS].[dbo].[Reference] as ref
+  LEFT JOIN [WoS].[pex].[Article] as art
+  ON ref.OST_BK = art.OST_BK
+  LEFT JOIN [WoS].[dbo].[Dictionnaire_ID] as id
+  ON ref.UID_Ref = id.UID
+  WHERE art.Code_Revue = 2229 
+  
+  
+--  AND ref.[Cited_Work] IS NOT NULL
+--  #67 752
+
+--	AND id.[OST_BK] IS NOT NULL 
+--  # 43 828 out of 67 774.
+
+--	AND ref.[Cited_Title] IS NOT NULL 
+--  # 36 335  out of 67 774.
+
+/* MEANING OF THE COMMENTED CONDITIONS
+Those two conditions enable us to look at how many references 
+don't have an OST_BK (and thus no information about cited documents) 
+and which cited documents had no title. 
+*/
+
+-- Cited abstract (references' abstract)
+SELECT DISTINCT id.[OST_BK] as OST_BK_Ref
+      ,ref.[UID_Ref]
+	    ,abst.Abstract
+  FROM [WoS].[dbo].[Reference] as ref
+  LEFT JOIN [WoS].[pex].[Article] as art
+  ON ref.OST_BK = art.OST_BK
+  LEFT JOIN [WoS].[dbo].[Dictionnaire_ID] as id
+  ON ref.UID_Ref = id.UID
+  LEFT JOIN [WoS].[dbo].[Abstract] as abst
+  on id.OST_BK = abst.OST_BK
+  WHERE art.Code_Revue = 2229
+	AND abst.Abstract IS NOT NULL 
+
+-- alt. cited abstract (references' abstract) (with keywords and Keywords plus)
+SELECT DISTINCT id.[OST_BK] as OST_BK_Ref
+      ,ref.[UID_Ref]
+	    ,abst.[Abstract]
+		,keyw.[Keyword] 
+		,keywP.[Keyword] as KeywordP
+  FROM [WoS].[dbo].[Reference] as ref
+  LEFT JOIN [WoS].[pex].[Article] as art
+  ON ref.OST_BK = art.OST_BK
+  LEFT JOIN [WoS].[dbo].[Dictionnaire_ID] as id
+  ON ref.UID_Ref = id.UID
+  LEFT JOIN [WoS].[dbo].[Abstract] as abst
+  on id.OST_BK = abst.OST_BK
+  LEFT JOIN [WoS].[dbo].[Keyword] as keyw
+  on id.OST_BK = keyw.OST_BK
+  LEFT JOIN [WoS].[dbo].[Keyword_Plus] as keywP
+  on id.OST_BK = keywP.OST_BK
+  WHERE art.Code_Revue = 2229
+	AND abst.Abstract IS NOT NULL 
+  
+-- Cited authors (references' authors)
+SELECT DISTINCT id.[OST_BK] as OST_BK_Ref
+      ,ref.[UID_Ref]
+	  ,aut.First_Name
+	  ,aut.Last_Name
+	  ,aut.Seq_No
+  FROM [WoS].[dbo].[Reference] as ref
+  LEFT JOIN [WoS].[pex].[Article] as art
+  ON ref.OST_BK = art.OST_BK
+  LEFT JOIN [WoS].[dbo].[Dictionnaire_ID] as id
+  ON ref.UID_Ref = id.UID
+  LEFT JOIN [WoS].[dbo].[Summary_Name] as aut
+  on id.OST_BK = aut.OST_BK
+  WHERE art.Code_Revue = 2229
+	AND aut.Seq_No IS NOT NULL
+
+-- The addresses of citing documents
+SELECT contrib.*
+  FROM [WoS].[dbo].Address as contrib
+  LEFT JOIN [WoS].[pex].[Article] as art
+  ON contrib.OST_BK = art.OST_BK
+  WHERE art.Code_Revue = 2229
+
+-- The organizations of citing documents
+SELECT contrib.*
+  FROM [WoS].[dbo].Address_Organization as contrib
+  LEFT JOIN [WoS].[pex].[Article] as art
+  ON contrib.OST_BK = art.OST_BK
+  WHERE art.Code_Revue = 2229
+```
+
+```{r DATA, cache = TRUE, include = FALSE}
+#DIRECTORY AND DATE 
+dir_od <- "C:/Users/jacob/OneDrive - Université Laval/DATA/"
+date <- "2024-09-23"
+
+
+# COLUMN NAMES FOR FOLLOWING DATA
+ref_col <- c(
+  "OST_BK",
+  "UID",
+  "OST_BK_Ref",
+  "UID_Ref",
+  "Cited_Author",
+  "Year",
+  "Cited_Title",
+  "Cited_Work"
+)
+
+art_col <- c(
+  "OST_BK",
+  "citing_year",
+  "UID",
+  "Titre",
+  "Nb_Reference",
+  "Type_Document", 
+  "Revue",
+  "Abrev",
+  "Abstract"
+)
+
+ref_auth_col <-  c(
+  "OST_BK_Ref",
+  "UID_Ref",
+  "first_name",
+  "last_name",
+  "seq_no"
+)
+
+ref_abstr_col <- c(
+  "OST_BK_Ref", 
+  "UID_Ref", 
+  "Abstract"
+)
+  
+art_auth_col <- c(
+  "OST_BK", 
+  "first_name", 
+  "last_name",
+  "seq_no"
+)
+
+ref_cit_top_col <- c(
+  "OST_BK_Ref", 
+  "UID_Ref", 
+  "citation_topic"
+)
+
+ref_kw_col <- c(
+  "OST_BK_Ref", 
+  "UID_Ref", 
+  "keyword",
+  "keyword_plus"
+)
+
+
+# DATA
+# For now, we have two datasets, the journal *Biological Theory* and *Biology & Philosophy*. 
+
+bp_db <- read_csv(paste0(dir_od,"bp_article_db.csv"), skip = 1) # This is the data from B&P and not WoS. 
+bio_th_bp <- read_csv(paste0(dir_od, "biological_theory_bp_2024-10-7.csv")) # This is the data from Springer and not Scopus. 
+
+
+ref_bp <- read_delim(paste0(dir_od,
+                            "bp_references_2024-09-23.csv"), delim = ";", col_names = ref_col)
+art_bp <- read_delim(paste0(dir_od, 
+                            "bp_articles_alt_2024-09-28.csv"),  delim = ";", col_names = art_col)
+ref_auth_bp <- read_delim(paste0(dir_od,
+                                 "bp_references-authors_2024-09-23.csv"), delim = ";", col_names = ref_auth_col)
+art_auth_bp <- read_delim(paste0(dir_od, 
+                                 "bp_articles-authors_2024-09-23.csv"),  delim = ";", col_names = art_auth_col)
+ref_abstr_bp <- read_delim(paste0(dir_od,
+                                  "bp_references-abstract_2024-09-23.csv"), delim = ";", col_names= ref_abstr_col)
+
+
+ref_cit_top_bp <- read_delim(paste0(dir_od,
+                                  "bp_references-citations-topic_2024-10_02.csv"), delim = ";", col_names = ref_cit_top_col) |> print(n = 100)
+
+art_adresse_bp <- read_delim(paste0(dir_od,
+                                  "bp_articles_adresses_2024-10-02.csv"), delim = ";") # Weird, why no columns need to be specify?
+art_org_bp <- read_delim(paste0(dir_od,
+                                  "bp_articles-organizations_2024-10-02.csv"), delim = ";") # Weird, why no columns need to be specify?
+ref_kw_bp <- read_delim(paste0(dir_od,
+                                  "bp_references-keywords_2024-10_02.csv"), delim = ";", col_names =  ref_kw_col)
+link_tbl <- ref_bp |> select(OST_BK, OST_BK_Ref, Cited_Author, Cited_Title,Year) |> filter(OST_BK_Ref != "NULL")
+
+```
+
+```{r functions}
+## Some functions to display nice data table and to add percentages automatically
+fct_percent <- function(x) {
+  dt <-  x |>  mutate(percent = n/sum(x$n, na.rm = TRUE)*100) |>
+    mutate(across(percent, round, 3)) 
+  dt
+}
+
+fct_DT <- function(x) {
+        dt <- DT:: datatable(head(x, 1000),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         pageLength = 5))
+        dt
+        }
+```
+
+# Database choice
+
+Early in our work came a methodological choice. Namely, choosing between two well known databases : Web of Science (WoS) and Scopus. **We chose to go with Scopus**. In summary, this choice is justified by two main reasons :
+
+
+1.  Scopus has a wider range of coverage when it comes to the journals we want to investigate, that is the main journals of philosophy of biology. For example, it covers *Biological Theory*, which is absent of our Web of Science database.
+
+2.  Web of Science for philosophy is missing many citing to cited document link.
+
+If you want in depth details about both databases and their strengths and weaknesses given our corpus, follow along. If you want to see the results, you can skip the results section.
+
+## Coverage across different databases : Springer, Web of Science and Scopus.
+
+Here is how we fetch the information from the different databases.
+
+-   For Springer, we looked manually at each volume and create an excel sheet with the number of articles per year.
+
+-   For Web of Science we fetched the data through the Albator database which we got access to via the OST. The detailed information about the SQL query already provided earlier.
+
+-   For Scopus, we used Scopus API and the *rscopus* package to get our data. See the code below for the specific workflow.
+
+For what comes, we will do our tests based on the well-known *Biology & Philosophy* journal that is present in each databases.
+
+```{r B&P SCOPUS API QUERY, eval = FALSE, message = FALSE, warning = FALSE}
+bio_philo_query <- rscopus::scopus_search("EXACTSRCTITLE(Biology and Philosophy)", 
+                                     view = "COMPLETE",
+                                     headers = insttoken)
+
+bio_philo_raw <- gen_entries_to_df(bio_philo_query$entries)
+```
+
+```{r TABLES OF INFORMATION B&P, include = FALSE, warning=FALSE, eval = FALSE, message = FALSE}
+# DIVISION OF INFORMATION INTO DIFFERENT TABLES.  ------------------------
+bio_philo_papers <- bio_philo_raw$df |> clean_names()# Papers
+bio_philo_affiliations <- bio_philo_raw$affiliation |> clean_names()# Affiliations
+bio_philo_authors <- bio_philo_raw$author |> clean_names()# Authors
+
+
+write_csv(bio_philo_papers, paste0(dir_od, "bio_philo_papers.csv"))
+write_csv(bio_philo_affiliations, paste0(dir_od, "bio_philo_affiliations.csv"))
+write_csv(bio_philo_authors, paste0(dir_od, "bio_philo_authors.csv"))
+
+```
+
+```{r, message = FALSE, warning = FALSE}
+bio_philo_papers <- read_csv(paste0(dir_od, "bio_philo_papers.csv"))
+bio_philo_affiliations <- read_csv(paste0(dir_od, "bio_philo_affiliations.csv"))
+bio_philo_authors <- read_csv(paste0(dir_od, "bio_philo_authors.csv"))
+citing_articles <- bio_philo_papers$`dc:identifier` # extracting the IDs of our articles
+```
+
+### Articles
+
+Let's start by making sure that we have a good coverage for articles. Unsuprisingly, the number of article listed in Springer are more numerous than in the other databases. At first sight, Web of Science seems to have a better coverage, with a difference of more than 200 articles when compared to Scopus.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+
+bio_philo_papers <- bio_philo_papers |> mutate(date = as.Date(prism_cover_date)) |> 
+  mutate(year = year(date)) |> 
+  filter(prism_publication_name == "Biology &amp; Philosophy" | prism_publication_name == "Biology and Philosophy" ) # It is important to note that our query from Scopus API isn't clean. We need to filter to only keep the journal which interest us.
+```
+
+```{r, echo= FALSE, eval=FALSE, message=FALSE}
+## This chunk of code below is to catch all the references. When there is more than 40 references in an article, Scopus API is not able to get them all. Hence we need a loop to collect them all. 
+
+citing_articles <- bio_philo_papers$dc_identifier # extracting the IDs of our articles
+citation_list <- list()
+
+# Loop to collect all the references.
+for(i in 1:length(citing_articles)){
+  citations_query <- abstract_retrieval(citing_articles[i],
+                                        identifier = "scopus_id",
+                                        view = "REF",
+                                        headers = insttoken)
+  if(!is.null(citations_query$content$`abstracts-retrieval-response`)){ # Checking if the article has some references before collecting them
+
+    nb_ref <- as.numeric(citations_query$content$`abstracts-retrieval-response`$references$`@total-references`)
+    citations <- gen_entries_to_df(citations_query$content$`abstracts-retrieval-response`$references$reference)$df
+
+    if(nb_ref > 40){ # The loop to collect all the references
+      nb_query_left_to_do <- floor((nb_ref) / 40)
+      cat("Number of requests left to do :", nb_query_left_to_do, "\n")
+      for (j in 1:nb_query_left_to_do){
+        cat("Request n°", j , "\n")
+        citations_query <- abstract_retrieval(citing_articles[i],
+                                              identifier = "scopus_id",
+                                              view = "REF",
+                                              startref = 40*j+1,
+                                              headers = insttoken)
+        citations_sup <- gen_entries_to_df(citations_query$content$`abstracts-retrieval-response`$references$reference)$df
+        citations <- bind_rows(citations, citations_sup)
+      }
+    }
+
+    citations <- citations |>
+      as_tibble(.name_repair = "unique") |>
+      select_if(~!all(is.na(.)))
+
+    citation_list[[citing_articles[i]]] <- citations
+  }
+}
+
+
+bio_philo_references <- bind_rows(citation_list, .id = "citing_art") # References
+write_csv(bio_philo_references, paste0(dir_od, "bio_philo_references.csv"))
+
+```
+
+```{r REFERENCES BIOLOGY AND PHILOSOPHY, echo = FALSE, warning = FALSE, message=FALSE}
+bio_philo_references <- read_csv(paste0(dir_od, "bio_philo_references.csv"))
+# We need to do this because our query matched not only Biology and Philosophy. 
+
+
+bio_philo_papers <- bio_philo_papers |> rename(citing_art = dc_identifier)
+clean_references_bp <-  left_join(bio_philo_papers, bio_philo_references, by = "citing_art")
+
+```
+
+```{r, echo = FALSE, message = FALSE}
+
+# DATA FROM WOS
+art_WoS <- art_bp |> select(OST_BK, citing_year) |> 
+  count(citing_year) |> 
+  rename(YEAR = citing_year, N = n)
+
+art_WoS <- art_WoS |> mutate(FROM = "Web of Science")
+art_springer <- bp_db |> select(YEAR, ARTICLES) |>
+  distinct() 
+
+# DATA FROM WOS (ARTICLES ONLY)
+art_only_WoS <- art_bp |> 
+  filter(Type_Document == "Article") |> 
+  count(citing_year) |> 
+  rename(YEAR = citing_year, N = n)
+
+art_only_WoS <- art_only_WoS |> mutate(FROM = "Web of Science (Articles only)")
+
+# DATA FROM SPRINGER
+art_springer <- art_springer |> 
+  rename(YEAR = YEAR, N = ARTICLES) |> 
+  mutate(FROM = "Springer")
+
+# DATA SCOPUS 
+art_scopus <- bio_philo_papers |> select(citing_art, year) |> 
+  distinct() |> 
+  count(year) |> 
+  rename(N = n,
+         YEAR = year) 
+art_scopus <- art_scopus |> mutate(FROM = "Scopus")
+
+# DATA SCOPUS (ARTICLES ONLY)
+art_only_scopus <- bio_philo_papers |> filter(subtype_description == "Article") |> 
+  select(citing_art, year) |> 
+  distinct() |> 
+  count(year) |> 
+  rename(N = n,
+         YEAR = year) 
+art_only_scopus <- art_only_scopus |> mutate(FROM = "Scopus (Articles only)")
+
+art_all <- rbind(art_springer, art_WoS, art_scopus, art_only_WoS, art_only_scopus)
+
+```
+
+```{r}
+#Table
+fct_DT(
+  art_all |>
+  group_by(FROM) |>
+  summarise(total_N = sum(N)) |>
+  arrange(desc(total_N))
+)
+
+```
+
+Lets look at the distribution of those articles since the beginning of *Biology & Philosophy*. We see that 1) Web of Science has a good coverage except for early and recent years of *B&P* whereas Scopus do pretty well in the same range. However, Scopus seems to lose a lot of articles from the decade 1995-2005 (not shown in the histogram for visibility). However, when we filter only on articles, Scopus gets actually a better coverage overall.
+
+```{r, echo = FALSE, message = FALSE}
+# Plot
+highchart() |>
+  hc_add_series(data = art_all |> filter(FROM == "Springer" | FROM == "Web of Science (Articles only)" | FROM == "Scopus (Articles only)"),
+                   type = "column", hcaes(x = YEAR,
+                   y = N, 
+                   group = FROM)) 
+
+```
+
+### References
+
+Now that we have a better idea of the articles we are able to get from both databases, lets look at their references.
+
+For Web of Science, we uncover that many many references had no unique identifier (around 1/3 to potentially 1/2).
+
+This is especially problematic. Here is some quantitative data :
+
+1)  We have a total of 67 774 cited document for our B&P corpus.
+2)  43 828 cited document have a Cited_Title (\~ 24 000 lost already).
+3)  31 439 cited document have Cited_Title and/or an OST_BK_Ref (the OST_BK or unique identifier for a cited document, see "Cited authors (references' authors)" section of the SQL script above).
+
+Compared to this important limitation, Scopus do much better.
+
+We must thank Aurélien Goutsmedt which made us aware of an API given by Scopus. It eased out our work substantially (for more information, see his blog [here](https://aurelien-goutsmedt.com/post/extracting-biblio-data-1/).
+
+Here, compared to our WoS data, we get more than 68 800 references with close to 100% match between references and articles. As a reminder we had around 64 000 references when going through WoS and almost 1/3 of them had no link to their respective article (in the histogram, see the Cited_ID comparison).
+
+```{r, message = FALSE, warning = FALSE}
+# Completeness of data -----------------------------------------------------
+df <- tibble(ref_bp) |> mutate(across(where(is.character), ~ na_if(., "NULL")))
+
+df <-  df|> rename(Citing_ID = OST_BK, Cited_ID = OST_BK_Ref, Cited_Year = Year)
+
+# Create a tibble summarizing total rows, NA values, and non-NA values by column
+summary_tibble <- tibble(
+  column = names(df),
+  total_rows = nrow(df),
+  na_count = sapply(df, function(x)
+    sum(is.na(x))),
+  non_na_count = sapply(df, function(x)
+    sum(!is.na(x)))
+)
+
+summary_tibble <-  summary_tibble |>  
+  mutate(percent = non_na_count / total_rows *100) |> 
+  mutate(across(percent, round, 3)) |>
+  arrange(desc(percent))
+
+
+summary_tibble_WoS <- summary_tibble |> 
+  filter(column != "UID" & column != "UID_Ref")
+
+summary_tibble_WoS$column <- factor(summary_tibble_WoS$column, levels = c("Citing_ID", "Cited_ID","Cited_Author", "Cited_Year", "Cited_Work", "Cited_Title"))
+summary_tibble_WoS <-summary_tibble_WoS |> 
+  mutate(column_adjust = column) |> # this will simplify our work next
+  mutate(FROM = "Web of Science") 
+
+
+```
+
+```{r, echo = FALSE}
+# We need to do this because our query matched not only Biology and Philosophy. 
+
+clean_references_bp <- mutate_all(bio_philo_references, toupper) |> clean_names()
+clean_references_bp <- clean_references_bp |> select(scopus_id, citing_art, prism_cover_date, sourcetitle, type, title, author_list_author_ce_surname, author_list_author_ce_initials, citedby_count)
+# scopus_id = ref, citing_art = art. 
+
+# rename columns 
+setnames(clean_references_bp, "prism_cover_date", "year")
+setnames(clean_references_bp, "author_list_author_ce_surname", "author")
+
+clean_references_bp <- clean_references_bp |> add_count(scopus_id) |> arrange(desc(n))
+
+```
+
+```{r, echo = FALSE, warning = FALSE}
+# Completeness of data -----------------------------------------------------
+df <- tibble(clean_references_bp)
+
+# Create a tibble summarizing total rows, NA values, and non-NA values by column
+summary_tibble <- tibble(
+  column = names(df),
+  total_rows = nrow(df),
+  na_count = sapply(df, function(x)
+    sum(is.na(x))),
+  non_na_count = sapply(df, function(x)
+    sum(!is.na(x)))
+)
+
+summary_tibble <-  summary_tibble |>  mutate(percent = non_na_count / total_rows *
+                                               100) |> 
+                                      mutate(across(percent, round, 3)) |> 
+                                      arrange(desc(percent))
+
+summary_tibble <- summary_tibble |> filter(column == "citing_art" | 
+                                             column == "scopus_id" | 
+                                             column ==  "sourcetitle" | 
+                                             column == "author" | 
+                                             column == "title" | 
+                                             column == "year")
+
+summary_tibble_scopus <- summary_tibble |> 
+  mutate(column_adjust = c("Citing_ID", "Cited_ID", "Cited_Work", "Cited_Author", "Cited_Title", "Cited_Year"))
+
+summary_tibble_scopus$column_adjust <- factor(summary_tibble_scopus$column_adjust, levels = c("Citing_ID", "Cited_ID", "Cited_Work","Cited_Author", "Cited_Year", "Cited_Title"))
+summary_tibble_scopus <-summary_tibble_scopus |> mutate(FROM = "Scopus")
+
+
+```
+
+```{r REFERENCES METADATA COMPLETENESS 2, echo = FALSE, warning = FALSE}
+summary_tibble_all <- rbind(summary_tibble_scopus, summary_tibble_WoS)
+
+summary_tibble_all |>
+  hchart(type = "column", hcaes(x = column_adjust, y = percent, group = FROM)) |>
+  hc_legend(enabled = T) 
+
+```
+
+# Scopus : Biological Theory
+
+Another reason why it can be interesting to choose Scopus is that it covers more journals in philosophy of biology such as *Biological Theory* (BT).
+
+## Coverage accross different databases
+
+### Articles
+
+Let's look at the article we are able to fetch with Scopus API compared to the articles listed on Springer for the [journal](https://link.springer.com/journal/13752/volumes-and-issues). We created a .csv counting manually all the articles listed on Springer for BT and compared it with what we got with the API.
+
+```{r API QUERY, echo = FALSE, warning = FALSE, eval = FALSE, message= FALSE}
+# API AND DATA -----------------------------------------------------------
+api_key <- "db914ab9d5f084e447fa55aa8c441393"
+set_api_key(api_key)
+
+insttoken <- "d7e05f3ac9d63a6d51b9170681078e96"
+insttoken <- inst_token_header(insttoken)
+
+bio_th_query <- rscopus::scopus_search("EXACTSRCTITLE(Biological Theory)", 
+                                     view = "COMPLETE",
+                                     headers = insttoken)
+
+bio_th_raw <- gen_entries_to_df(bio_th_query$entries)
+```
+
+```{r, include = FALSE, warning=FALSE, eval = FALSE, message = FALSE}
+
+# DIVISION OF INFORMATION INTO DIFFERENT TABLES
+bio_th_papers <- bio_th_raw$df |> clean_names() # Papers
+bio_th_affiliations <- bio_th_raw$affiliation |> clean_names() # Affiliations
+bio_th_authors <- bio_th_raw$author |> clean_names() # Authors
+
+write_csv(bio_th_papers, paste0(dir_od, "bio_th_papers.csv"))
+write_csv(bio_th_affiliations, paste0(dir_od, "bio_th_affiliations.csv"))
+write_csv(bio_th_authors, paste0(dir_od, "bio_th_authors.csv"))
+
+```
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
+bio_th_papers <- read_csv(paste0(dir_od, "bio_th_papers.csv"))
+bio_th_affiliations <- read_csv(paste0(dir_od, "bio_th_affiliations.csv"))
+bio_th_authors <- read_csv(paste0(dir_od, "bio_th_authors.csv"))
+```
+
+```{r, echo= FALSE, eval = FALSE, message = FALSE}
+## This chunk of code below is to catch all the references. When there is more than 40 references in an article, Scopus API is not able to get them all. Hence we need a loop to collect them all. 
+
+citing_articles <- bio_th_papers$dc_identifier # extracting the IDs of our articles
+citation_list <- list()
+
+# Loop to collect all the references.
+for(i in 1:length(citing_articles)){
+  citations_query <- abstract_retrieval(citing_articles[i],
+                                        identifier = "scopus_id",
+                                        view = "REF",
+                                        headers = insttoken)
+  if(!is.null(citations_query$content$`abstracts-retrieval-response`)){ # Checking if the article has some references before collecting them
+
+    nb_ref <- as.numeric(citations_query$content$`abstracts-retrieval-response`$references$`@total-references`)
+    citations <- gen_entries_to_df(citations_query$content$`abstracts-retrieval-response`$references$reference)$df
+
+    if(nb_ref > 40){ # The loop to collect all the references
+      nb_query_left_to_do <- floor((nb_ref) / 40)
+      cat("Number of requests left to do :", nb_query_left_to_do, "\n")
+      for (j in 1:nb_query_left_to_do){
+        cat("Request n°", j , "\n")
+        citations_query <- abstract_retrieval(citing_articles[i],
+                                              identifier = "scopus_id",
+                                              view = "REF",
+                                              startref = 40*j+1,
+                                              headers = insttoken)
+        citations_sup <- gen_entries_to_df(citations_query$content$`abstracts-retrieval-response`$references$reference)$df
+        citations <- bind_rows(citations, citations_sup)
+      }
+    }
+
+    citations <- citations |>
+      as_tibble(.name_repair = "unique") |>
+      select_if(~!all(is.na(.)))
+
+    citation_list[[citing_articles[i]]] <- citations
+  }
+}
+
+
+bio_th_references <- bind_rows(citation_list, .id = "citing_art") # References
+write_csv(bio_th_references, paste0(dir_od, "bio_th_references.csv"))
+
+```
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+bio_th_papers <- bio_th_papers |> mutate(date = as.Date(prism_cover_date)) |> 
+  mutate(year = year(date)) |> 
+  filter(prism_publication_name == "Biological Theory")
+
+color_map2 <- c("#ff572f", "#4e5c68")
+
+art_scopus_BT <- bio_th_papers |> select(dc_identifier, year) |> 
+  distinct() |> 
+  count(year) |> 
+  rename(N = n,
+         YEAR = year) 
+
+art_scopus_BT <- art_scopus_BT |> mutate(FROM = "Scopus")
+art_springer_BT <- bio_th_bp |> 
+                    select(YEAR, ARTICLE, FROM) |>
+                      rename(N = ARTICLE)
+
+
+art_all_BT <- rbind(art_scopus_BT, art_springer_BT)
+
+```
+
+The first step is to compare the coverage between Springer and Scopus. As we see, both are pretty close Springer getting a little bit less than 60 article more than Scopus.
+
+```{r}
+#Table
+
+fct_DT(
+  art_all_BT |>
+  group_by(FROM) |>
+  summarise(total_N = sum(N)) |>
+  arrange(desc(total_N))
+)
+
+```
+
+When we look at the specific coverage for each year, we see that the coverage is pretty good. However, 2024 is a strange year where the coverage of Scopus is better than the one of Springer. We don't understand why at the moment.
+
+```{r, SCOPUS VS SPRINGER, echo = FALSE, warning = FALSE, message=FALSE}
+# Interactive visualisation 
+
+art_all_BT <- art_all_BT |>
+  group_by(FROM, YEAR) |>
+  summarise(N = sum(N))
+
+highchart() |>
+  hc_add_series(data = art_all_BT,
+                   type = "column", hcaes(x = YEAR,
+                   y = N, 
+                   group = FROM)) |>
+  hc_colors(color_map2)
+
+```
+
+### References
+
+As we see, the coverage in Scopus ressemble the one we get from Springer when it comes to articles.
+
+Now, let's look at the metadata of the references. For the journal *Biological Theory*, we get 35 793 references.
+
+```{r REFERENCES BIOLOGICAL THEORY, echo = FALSE, warning = FALSE, message=FALSE}
+bio_th_references <- read_csv(paste0(dir_od, "bio_th_references.csv"))
+
+
+bio_th_papers <- bio_th_papers |> rename(citing_art = dc_identifier)
+clean_references_th <-  left_join(bio_th_papers, bio_th_references, by = "citing_art")
+
+# clean_references |> nrow() = 35 793
+```
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+
+clean_references_th <- mutate_all(bio_th_references, toupper) |> clean_names()
+clean_references_th <- clean_references_th |> select(scopus_id, citing_art, prism_cover_date, sourcetitle, type, title, author_list_author_ce_surname, author_list_author_ce_initials, citedby_count)
+# scopus_id = ref, citing_art = art. 
+
+# RENAME COLUMNS 
+setnames(clean_references_th, "prism_cover_date", "year")
+setnames(clean_references_th, "author_list_author_ce_surname", "author")
+
+clean_references_th <- clean_references_th |> add_count(scopus_id) |> arrange(desc(n))
+
+```
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+# Completeness of data -----------------------------------------------------
+df <- tibble(clean_references_th)
+
+# Create a tibble summarizing total rows, NA values, and non-NA values by column
+summary_tibble <- tibble(
+  column = names(df),
+  total_rows = nrow(df),
+  na_count = sapply(df, function(x)
+    sum(is.na(x))),
+  non_na_count = sapply(df, function(x)
+    sum(!is.na(x)))
+)
+
+summary_tibble <-  summary_tibble |>  mutate(percent = non_na_count / total_rows *
+                                               100) |> 
+                                      mutate(across(percent, round, 3)) |> 
+                                      arrange(desc(percent))
+
+
+summary_tibble <- summary_tibble |> filter(column == "citing_art" | 
+                                             column == "scopus_id" | 
+                                             column ==  "sourcetitle" | 
+                                             column == "author" | 
+                                             column == "title" | 
+                                             column == "year")
+
+summary_tibble <- summary_tibble |> 
+  mutate(column_adjust = c("Citing_ID", "Cited_ID", "Cited_Author", "Cited_Work", "Cited_Title", "Cited_Year"))
+
+summary_tibble$column_adjust <- factor(summary_tibble$column_adjust, levels = c("Citing_ID", "Cited_ID", "Cited_Work","Cited_Author", "Cited_Year", "Cited_Title"))
+
+
+
+```
+
+We have almost 100% non-na entries for a) Cited_Authors, b) Citing_ID, c) Cited_ID, d) Cited_Work which is either the article name or the book name. We should not be too bothered with the fact that the column Cited_Title as around 40% of NA entries since books do not have them typically.
+
+Something that can look more bothersome is the Cited_Year column 40% of NA values. Looking into it, we can easily understand why there is so many NAs.The main reason is because Scopus has done before hand cleaning, notably for books that have many editions. You can demonstrate this by fetching the data directly from Scopus website and compare it to what we get with the API.
+
+```{r REFERENCES METADATA COMPLETENESS, echo = FALSE, warning = FALSE, message=FALSE}
+summary_tibble |>
+  hchart(type = "column", hcaes(x = column_adjust, y = percent), color = "#ff572f") |>
+  hc_legend(enabled = T)
+```
+
+Lets look at an example. Here, we see that the famous book by Richard Dawkins *The Selfish Gene* has been refered to with different publication years (i.e. 1976 ans 1989). It is also the case for Odling-Smee et al. seminal work *Niche Construction: The Neglected Process in Evolution* which gets cited with two different year. If we look at the data from Scopus API we see that Dawkins book got no year attributed to it and that they many similar but different entries are under the same unique identifier (scopus_id).
+
+```{r REGEX, eval = FALSE, message = FALSE, warning = FALSE}
+# REGEX FOR VARIOUS REFERENCES' EXTRACTION --------------------------------
+# Define extraction patterns
+extract_authors <- paste0(
+  "^",                                         
+  "(?:[A-Z]+(?:[-'][A-Z]+)*\\s+)*",  # Matches first part of author name allowing hyphens and apostrophes
+  "(?:[A-Z]+(?:[-'][A-Z]+)*)",      # Matches last part of author name allowing hyphens and apostrophes
+  "\\s+[A-Z](?:\\.[A-Z])*\\.",      # Matches initials (e.g., J. or J.A.)
+  "(?:,\\s+",                                  
+  "(?:[A-Z]+(?:[-'][A-Z]+)*\\s+)*",  # Matches first part of additional author names
+  "(?:[A-Z]+(?:[-'][A-Z]+)*)",      # Matches last part of additional author names
+  "\\s+[A-Z](?:\\.[A-Z])*\\.",      # Matches initials of additional authors
+  ")*"                                         
+)
+
+extract_year <- "\\b(\\d{4})\\b"
+extract_journal <- "[A-Z][A-Za-z\\s]+(?=\\,\\s\\d)" 
+extract_volume <- "\\b\\d+\\b(?=\\,|\\s)" 
+extract_issue <- "(?<=\\,\\s)(?:[A-Z])?\\d+(?=\\,|\\s|\\()|(?<=\\,\\s)[A-Z]\\d+(?=\\,|\\s|\\()"
+extract_pages <- "\\bP{0,1}\\.\\s*\\d+(-\\d+)?\\b"
+
+references_extract$references <- toupper(references_extract$references)
+
+
+extraction <- function(ref) {
+  # Extract components
+  year <- str_extract(ref, extract_year)
+  authors <- str_extract(ref, extract_authors)
+  journal <- str_extract(ref, extract_journal)
+  pages <- str_extract(ref, extract_pages)
+  
+  # Extract volume and issue separately
+  volume_issue <- str_extract(ref, "\\b\\d{1,4}\\b(,\\s*\\d{1,4})?")
+  
+  # Split into volume and issue if both are present
+  if (!is.na(volume_issue)) {
+    volume_issue_split <- str_split(volume_issue, ",\\s*")[[1]]
+    volume <- volume_issue_split[1]  # First part is the volume
+    issue <- ifelse(length(volume_issue_split) > 1, volume_issue_split[2], NA)  # Second part is the issue, if it exists
+  } else {
+    volume <- NA
+    issue <- NA
+  }
+  
+  # Clean up formats
+  year <- str_trim(year)
+  pages <- ifelse(!is.na(pages), str_extract(pages, "\\d+(-\\d+)?"), NA)
+  
+  # Create a vector of extracted components
+  extracted_parts <- c(authors, year, journal, volume, issue, pages)
+  
+  # Remove extracted parts and clean the remaining reference
+  remaining_ref <- ref %>%
+    str_remove_all(paste0(extracted_parts, collapse = "|")) %>%
+    str_remove_all(",\\s*") %>%
+    str_remove_all("\\s*\\(.*?\\)\\s*") %>%
+    str_remove_all("P\\.\\s*|PP\\.\\s*") %>%
+    str_remove_all("^\\s*|\\s*$") %>%
+    str_trim()
+  
+  tibble(
+    extracted_year = year,
+    extracted_authors = authors,
+    unique_author = authors, # This extra column is to get all unique author for later count. 
+    extracted_journal = journal,
+    extracted_volume = volume,
+    extracted_issue = issue,
+    extracted_pages = pages,
+    remaining_ref = remaining_ref 
+  )
+}
+
+
+
+# Apply the function and handle nested results
+results <- references_extract %>%
+  mutate(
+    extraction_results = map(references, extraction)  # Apply function to each reference
+  ) %>%
+  unnest_wider(extraction_results)  # Unnest the tibble returned by `test_extraction`
+
+#write_csv(results2, paste0(dir, "results2.csv"))
+# View the results
+fct_DT(results)
+
+results_split <- results %>%
+  separate_rows(unique_author, sep = ",\\s*")  # Split authors into multiple rows
+fct_DT(results_split)
+
+
+
+# SAVE RESULTS ------------------------------------------------------------
+write_csv(results, paste0(dir_od, "cleaned_ref.csv"))
+write_csv(results_split, paste0(dir_od, "cleaned_ref_split.csv"))
+```
+
+```{r, echo = FALSE, warning=FALSE, message = FALSE}
+# LOADING THE RESULTS PREVIOUSLY SAVED FROM LAST CHUNK
+results <- read_csv(paste0(dir_od, "cleaned_ref.csv"))
+results_split <- read_csv(paste0(dir_od, "cleaned_ref_split.csv"))
+
+```
+
+```{r, cache = TRUE}
+
+count_ref_art <- results |> 
+  filter(!is.na(extracted_authors)) |>
+  select(extracted_authors, extracted_year, remaining_ref) |>
+  add_count(remaining_ref, extracted_authors) |> 
+  unique() |>
+  arrange(desc(n))
+
+fct_DT(count_ref_art)
+
+```
+
+```{r, echo = FALSE}
+
+dawkins_tbl <- clean_references_th |> 
+  select(scopus_id, author, year, sourcetitle, title) |> 
+  filter(!is.na(scopus_id)) |> 
+  filter(scopus_id == "0004149207") |> distinct()
+
+fct_DT(dawkins_tbl)
+
+```
+
+# Comparative results of *Biology & Philosophy* and *Biological Theory*
+
+Now that we have checked that the coverage for got both articles and their references is satisfying, we can dig into some of the results. Let's start with the articles.
+
+## Articles' results
+
+### Authors that published the most in *Biology & Philosophy*
+
+```{r, warning = FALSE}
+author_count_bp <- bio_philo_authors |> select(authname) |> count(authname) |> arrange(desc(n))
+author_count_bp <- fct_percent(author_count_bp) 
+fct_DT(author_count_bp)
+
+```
+
+### Authors that published the most in *Biological Theory*.
+
+```{r, warning = FALSE}
+
+author_count_th <- bio_th_authors |> select(authname) |> count(authname) |> arrange(desc(n))
+author_count_th <- fct_percent(author_count_th) 
+fct_DT(author_count_th)
+
+```
+
+### Comparison authors that published the most in B&P vs BT.
+
+```{r, cache = TRUE}
+author_count_th <- author_count_th |> mutate(rank_in_th = dense_rank(-author_count_th$n))
+author_count_bp <- author_count_bp |> mutate(rank_in_bp = dense_rank(-author_count_bp$n))
+
+author_count_tbl <- left_join(author_count_th |> select(authname, rank_in_th), author_count_bp |> select(authname, rank_in_bp), by = "authname")
+fct_DT(author_count_tbl)
+
+```
+
+## References' results
+
+### Most cited references in *Biology & Philosophy*
+
+```{r MOST CITED REFS, cache = TRUE}
+clean_references_bp <- clean_references_bp |> mutate(year = as.Date(year)) |> mutate(year = year(year)) #To get only the year. 
+
+most_c_ref_bp <- clean_references_bp  |> filter(!is.na(sourcetitle)) |>  
+  select(scopus_id, author, year, sourcetitle, title, type) |> add_count(sourcetitle, title, author, scopus_id)  |> arrange(desc(n)) |> distinct() 
+
+most_c_ref_bp <- fct_percent(most_c_ref_bp)
+fct_DT(most_c_ref_bp |> select(-scopus_id, -type))
+
+```
+
+### Most cited references in *Biological Theory*
+
+```{r}
+clean_references_th <- clean_references_th |> mutate(year = as.Date(year)) |> mutate(year = year(year)) 
+
+most_c_ref <- clean_references_th  |> filter(!is.na(sourcetitle)) |>  select(scopus_id, author, year, sourcetitle, title, type) |> add_count(sourcetitle, title, author, scopus_id)  |> arrange(desc(n)) |> distinct() 
+most_c_ref_th <- fct_percent(most_c_ref)
+fct_DT(most_c_ref_th |> select(-scopus_id, -type))
+
+```
+
+### Most cited authors in *Biological Theory*
+
+```{r}
+count_cited_authors <- clean_references_th |> select(author, 	
+author_list_author_ce_initials) |> count(author, 	
+author_list_author_ce_initials) |> arrange(desc(n))
+count_cited_authors <- fct_percent(count_cited_authors)
+fct_DT(count_cited_authors)
+
+```
+
+### Most cited references in both corpus
+
+```{r, cache = TRUE}
+
+# BIOLOGY & PHILOSOPHY
+clean_references_bp <- clean_references_bp |> add_count(scopus_id, author, sourcetitle, title, author_list_author_ce_initials, year, name = "most_n")
+
+clean_references_bp <- clean_references_bp |>
+  distinct() |> 
+  filter(!is.na(scopus_id))
+
+clean_references_bp <- clean_references_bp |> 
+  group_by(scopus_id) |> 
+  filter(most_n == max(most_n)) |> 
+  slice_head(n = 1) |> 
+  ungroup() 
+
+rank_bp <- clean_references_bp |> mutate(rank_in_bp = dense_rank(-clean_references_bp$n)) |> arrange(desc(n))
+
+
+# BIOLOGICAL THEORY
+clean_references_th <- clean_references_th |> add_count(scopus_id, author, sourcetitle, title, author_list_author_ce_initials, year, name = "most_n")
+
+clean_references_th <- clean_references_th |>
+  distinct() |> 
+  filter(!is.na(scopus_id))
+
+clean_references_th <- clean_references_th |> 
+  group_by(scopus_id) |> 
+  filter(most_n == max(most_n)) |> 
+  slice_head(n = 1) |> 
+  ungroup() 
+
+rank_th <- clean_references_th |> mutate(rank_in_th = dense_rank(-clean_references_th$n)) |> arrange(desc(n))
+
+
+cited_authors_tbl <- full_join(
+  rank_th |> select(scopus_id, author, year, sourcetitle, title, rank_in_th),
+  rank_bp |> select(scopus_id, rank_in_bp),
+  by = "scopus_id") 
+
+fct_DT(cited_authors_tbl |> select(-scopus_id))
+
+```
+
+## Journals results
+
+### Most cited journals in *Biology & Philosophy*
+
+```{r, cache = TRUE}
+cited_journals_bp <- clean_references_bp |> select(scopus_id, sourcetitle, title) |> filter(!is.na(title)) |> count(sourcetitle)  |> arrange(desc(n))
+
+cited_journals_bp <- fct_percent(cited_journals_bp)
+fct_DT(cited_journals_bp)
+```
+
+### Most cited journals in *Biological Theory*
+
+```{r, cache = TRUE}
+cited_journals_th <- clean_references_th |> select(scopus_id, sourcetitle, title) |> filter(!is.na(title)) |> count(sourcetitle)  |> arrange(desc(n))
+
+cited_journals_th <- fct_percent(cited_journals_th)
+fct_DT(cited_journals_th)
+```
+
+### Comparison cited journals
+
+```{r}
+journal_rank_bp <- cited_journals_bp |> mutate(rank_in_bp = dense_rank(-cited_journals_bp$n)) |> arrange(desc(n))
+journal_rank_th <- cited_journals_th |> mutate(rank_in_th = dense_rank(-cited_journals_th$n)) |> arrange(desc(n))
+
+journal_rank_all <- left_join(journal_rank_bp |> select(sourcetitle, rank_in_bp),journal_rank_th |> select(sourcetitle, rank_in_th), by = "sourcetitle")
+
+fct_DT(journal_rank_all)
+```
+
+## Keywords
+
+### *Biology & Philosophy*
+
+```{r, cache = TRUE}
+keyword_bp <- bio_philo_papers |> select(citing_art, dc_creator, year, authkeywords, prism_publication_name)
+
+keyword_bp_cleaned <- keyword_bp |> 
+  separate_rows(authkeywords, sep = " \\| ") |> 
+  filter(!is.na(authkeywords)) 
+
+keyword_bp_cleaned$authkeywords <- toupper(keyword_bp_cleaned$authkeywords)
+
+# KEYWORD PLUS WORD CLOUD
+keyword_bp_count <-  keyword_bp_cleaned |> 
+ select(authkeywords) |> count(authkeywords, sort=TRUE)
+
+keyword_bp_count <- fct_percent(keyword_bp_count)
+fct_DT(keyword_bp_count)
+
+
+```
+
+### *Biological Theory*
+
+```{r, cache = TRUE}
+keyword_th <- bio_th_papers |> select(citing_art, dc_creator, year, authkeywords, prism_publication_name)
+
+keyword_th_cleaned <- keyword_th |> 
+  separate_rows(authkeywords, sep = " \\| ") |> 
+  filter(!is.na(authkeywords))
+
+keyword_th_cleaned$authkeywords <- toupper(keyword_th_cleaned$authkeywords)
+
+# KEYWORD PLUS WORD CLOUD
+keyword_th_count <-  keyword_th_cleaned |> 
+ group_by(authkeywords) |> count(authkeywords, sort=TRUE)
+
+keyword_th_count <- fct_percent(keyword_th_count)
+fct_DT(keyword_th_count)
+```
+
+# Wordclouds
+
+Now that we have these tables, it might be of use to visualize those keywords and their importance.
+
+## *Biology & Philosophy*.
+
+```{r, echo =FALSE, results='asis'}
+wc_bp <- wordcloud2(keyword_bp_count, size = .7)
+
+htmlwidgets::saveWidget(widget = wc_bp,
+                        file = "wc_bp.html",
+                        selfcontained = TRUE)
+
+```
+
+<iframe src="wc_bp.html" width="800" height="500">
+
+</iframe>
+
+## *Biological Theory*
+
+```{r, echo =FALSE, results='asis', message = FALSE, warning=FALSE}
+wc_th <- wordcloud2(keyword_th_count, size = .7)
+htmlwidgets::saveWidget(widget = wc_th,
+                        file = "wc_th.html",
+                        selfcontained = TRUE)
+```
+
+<iframe src="wc_th.html" width="800" height="500">
+
+</iframe>
+
+**An important thing to note is that we don't have access to the keywords of the references provided by Scopus**
+
+# Citation delay
+
+Here, we compute what we call citation delay. It is computed as the difference between the article publishing year and the mean year of the references the article cites. Here is the cumulative distribution function that shows the evolution of this citation delay as the journal gets older.
+
+```{r, message = FALSE, warning = FALSE}
+
+# BIOLOGY & PHILOSOPHY
+bio_philo_papers <- bio_philo_papers |> mutate(date = as.Date(prism_cover_date)) |> 
+  mutate(year = year(date))
+
+delay_refs_bp <- clean_references_bp |> 
+  rename(cited_year = year) |>
+  left_join(bio_philo_papers |> select(citing_art, year), 
+            by = "citing_art") |>
+  arrange(desc(citing_art))
+
+
+
+delay_refs_bp <- delay_refs_bp |> mutate(delay = year-cited_year) |> mutate(from = "B&P")
+
+
+delay_refs_bp$decade <- cut(delay_refs_bp$year, 
+                            breaks = c(2006, 2014, 2023),  # Include up to 2024
+                            labels = c("2006-2013", "2014-2021"),
+                            right = FALSE)  # Left-inclusive
+
+
+p1 <- ggplot(delay_refs_bp |> filter(!is.na(decade)), aes(x = delay, color = decade, group = decade)) +
+  stat_ecdf(geom = "step", show.legend = FALSE) +
+  labs(title = "Citation Delay Biology & Philosophy (1987-2022)",
+       x = "Delay",
+       y = "CDF") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_continuous(limits = c(0, 50)) 
+
+# BIOLOGICAL THEORY
+delay_refs_th <- clean_references_th |> 
+  rename(cited_year = year) |>
+  left_join(bio_th_papers |> 
+  select(citing_art, year), by = "citing_art") |>
+  arrange(desc(citing_art))
+
+
+delay_refs_th <- delay_refs_th |> mutate(delay = year-cited_year) |> mutate(from = "BT")
+
+
+delay_refs_th$decade <- cut(delay_refs_th$year, 
+                    breaks = c(2006, 2014, 2023), 
+                    labels = c("2006-2013", "2014-2021"),
+                    right = FALSE)  # left-inclusive
+
+
+p2 <- ggplot(delay_refs_th |> filter(!is.na(decade)), aes(x = delay, color = decade, group = decade)) +
+  stat_ecdf(geom = "step", show.legend = FALSE) +
+  labs(title = "Citation Delay Biological Theory (2006-2022)",
+       x = "Delay",
+       y = "CDF") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  scale_x_continuous(limits = c(0, 50)) 
+
+# BOTH B&P AND BT
+all <- rbind(delay_refs_bp, delay_refs_th) |> filter(!is.na(decade))
+
+
+p3 <- ggplot(all, aes(x = delay, color = decade, group = decade)) +
+  stat_ecdf(geom = "step") +
+  labs(
+       x = "Delay",
+       y = "CDF")  +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position="top", legend.title = element_blank(), ) +
+  scale_x_continuous(limits = c(0, 50)) +
+  facet_grid(rows = ~ from) 
+
+ggplotly(p3) |> layout(legend = list(title = FALSE, orientation = "h",   # show entries horizontally
+                     xanchor = "center",  
+                     x = 0.5, y = 1.2))
+```
+
+## What is the distribution of the citations?
+
+If this shift is interesting, we need to be careful. It could be only because as we go, we still cite old stuff, thus creating an artificial shift to the right not really problematic. Let's look at the distribution of citation delay.
+
+```{r, message = FALSE, warning = FALSE}
+
+p4 <- all |> ggplot(aes(x = delay, group = from, fill = decade, color = decade)) +
+  geom_density(alpha = 0.5) +
+  facet_grid(cols = vars(from), rows = vars(decade)) 
+
+ggplotly(p4) |> layout(legend = list(title = FALSE, orientation = "h",   # show entries horizontally
+                     xanchor = "center",  # use center of legend as anchor
+                     x = 0.5, y = 1.2))
+
+```

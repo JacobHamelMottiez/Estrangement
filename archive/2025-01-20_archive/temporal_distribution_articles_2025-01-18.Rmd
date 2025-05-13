@@ -1,0 +1,191 @@
+---
+title: "Functions for Visualizing Data"
+author: "Jacob Hamel-Mottiez"
+date: "`r Sys.Date()`"
+output:
+  html_document: 
+    toc: true
+    toc_float:
+      collapsed: true
+    code_folding: hide
+---
+
+```{r, DIRECT0RY, echo = FALSE, message = FALSE}
+dir_od <- "C:/Users/jacob/OneDrive - Université Laval/DATA/"
+```
+
+```{r, PACKAGES, message = FALSE}
+# PACKAGES ----------------------------------------------------------------
+library(tidyverse)
+library(janitor)
+library(ggplot2)
+library(plotly)
+library(highcharter)
+```
+
+```{r, DATA, message = FALSE, warning= FALSE}
+bio_philo_papers <- read_csv(paste0(dir_od, "bio_philo_papers.csv"))
+```
+
+# Temporal Distribution of the data Function
+
+The goal of this function is to plot the articles from different journals (e.g. *Biology and Philosophy*, *Biological Theory*, ect.), in a fashion that makes it possible to see the number of articles published since the journal creation. Importantly, this function filter out editorials as well as reviews to keep only articles.
+
+```{r, FUNCTION 1}
+temporal_distrib_papers <- function(data){
+  
+  # Preprocess data 
+  data$prism_cover_date <- format(data$prism_cover_date, format = "%Y") |> as.numeric()
+  data_filtered <- data |> select(prism_publication_name, prism_cover_date, subtype_description) |>
+    filter(subtype_description == "Article")
+  data_filtered <- data_filtered  |> count(prism_cover_date, sort = TRUE) 
+  
+  
+  # Visualisation 
+  g <- ggplot(data_filtered, aes(x = prism_cover_date, y = n)) +
+    geom_point() +
+    geom_smooth(method = "loess", span = 0.3,  # Loess smoothing
+                fill = "gray", alpha = 0.5, se = TRUE, color = "red") +
+    labs(title = "Temporal Distribution of the Data",
+         x = "Year", 
+         y = "No. of Papers") +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold"),   # Bold, centered title
+      axis.text.x = element_text(size=14, face = "bold"),              # Bold x-axis text
+      axis.text.y = element_text(size=14, face = "bold"),               # Bold y-axis text
+      axis.title.x = element_text(size=14, face="bold"),    
+      axis.title.y = element_text(size=14, face="bold"),
+    )
+  show(g)
+}
+```
+
+```{r, VIZ F1, message = FALSE}
+temporal_distrib_papers(bio_philo_papers)
+
+```
+
+# Philosophy of biology that is in general philosophy journals 
+The goal of this function is to represent the amount of references in each articles of general philosophy that are from one of our corpus of philosophy of biology. The idea is that some of the articles published in general philosophy of biology journals are in fact talking about philosophy of biology issue. Hence, with the appropriate threshold, we can infer after a given number of citation to philosophy of biology works that the article initially published in general philosophy of science is in fact about philosophy of biology (for more information, see `C:/Users/jacob/OneDrive - Université Laval/biophilo/filtering_biophilo_in_general_2025-01-16.R`)
+
+First, we need to identify which journals are journals of philosophy of biology. Here is an example of some of them for the purpose of the present showcase : 
+```{r, PHILOSOPHY OF BIOLOGY JOURNALS, message = FALSE}
+philo_bio_journals <- c("BIOLOGY & PHILOSOPHY", 
+                        "BIOLOGY AND PHILOSOPHY", 
+                        "BIOLOGICAL THEORY", 
+                        "PHILOSOPHICAL TRANSACTIONS OF THE ROYAL SOCIETY B: BIOLOGICAL SCIENCES", 
+                        "STUDIES IN HISTORY AND PHILOSOPHY OF SCIENCE PART C :STUDIES IN HISTORY AND PHILOSOPHY OF BIOLOGICAL AND BIOMEDICAL SCIENCES", 
+                        "HISTORY AND PHILOSOPHY OF THE LIFE SCIENCES")
+```
+
+With this information, we can now count how many references are from those journals in a specific generalist philosophy of science journal (here the British Journal for Philosophy of Science or BJPS). 
+```{r DATA FROM BJPS, message = FALSE, warning= FALSE}
+BJPS_references <- read_csv(paste0(dir_od, "BJPS_query_references_2025-01-16.csv")) |> clean_names()
+BJPS_articles <- read_csv(paste0(dir_od, "BJPS_query_papers_2025-01-16.csv")) |> clean_names()
+```
+
+
+```{r, FUNCTION 2, message = FALSE}
+philo_bio_in_general <- function(references, philo_bio_journals){
+  ## Preprocessing
+  references$sourcetitle <- toupper(references$sourcetitle)
+  
+  references <- references |> mutate(is_philo_bio = ifelse(sourcetitle %in% philo_bio_journals, TRUE, FALSE))
+  references <-  references |>
+    mutate(is_philo_bio_journal = if_else(sourcetitle %in% philo_bio_journals, TRUE, FALSE)) |>
+    group_by(citing_art) |>
+    mutate(n_ref_bio_philo = sum(is_philo_bio_journal, na.rm = TRUE)) |>
+    ungroup()
+  
+  
+  references <- references |> select(citing_art, scopus_eid, sourcetitle, is_philo_bio, n_ref_bio_philo)|> 
+    filter(!is.na(scopus_eid)) |>
+    add_count(citing_art, name = "n_ref")
+  
+  ## Visualization -----------------------------------------------------------
+  articles_only <- references |> select(-scopus_eid, -sourcetitle, -is_philo_bio) |> distinct() 
+  data_long <- articles_only |> pivot_longer(cols = c(n_ref, n_ref_bio_philo),
+                                             names_to = "category",
+                                             values_to = "count") |> distinct()
+  
+  
+  g <- ggplot(data_long, aes(x = citing_art, y = count, fill = category)) +
+    geom_bar(stat = "identity", position = "stack") +
+    theme_minimal() +
+    labs(x = "Citing Article", y = "No. of References", fill = "Category") +
+    theme(axis.text.x = element_blank())
+  show(g)
+}
+```
+
+```{r VIZ F2}
+philo_bio_in_general(BJPS_references, philo_bio_journals)
+```
+
+Obviously, ploting all those article on the x-axis is a bit overwhelming. The next function aims at answering this limitation. More precisly, we group articles by their year, and take the mean of their total refs and the refs going to philosophy of biology. 
+
+
+```{r }
+BJPS_articles <- BJPS_articles |> select(dc_identifier, prism_publication_name, prism_cover_date,  subtype_description) |> distinct()
+
+philo_bio_in_general_by_year <- function(articles, references) {
+  
+  articles_philo_bio <- references |> select(-scopus_eid, -sourcetitle, -is_philo_bio) |> distinct() 
+  articles$prism_cover_date <- format(articles$prism_cover_date, format = "%Y") |> as.numeric()
+  
+  articles_cleaned <- articles |> select(dc_identifier, prism_publication_name, prism_cover_date,  subtype_description) |> 
+    filter(subtype_description =="Article") |> 
+    distinct()
+  
+  philo_bio_articles_in_general <- left_join(articles_philo_bio, articles_cleaned, by = join_by(citing_art == dc_identifier)) |> arrange(-n_ref_bio_philo)
+  
+  
+  ## Mean by year
+  
+  # Assuming your dataframe is called df
+philo_bio_articles_in_general <- philo_bio_articles_in_general %>%
+  group_by(prism_cover_date) %>%
+  mutate(
+    mean_n_ref = mean(n_ref, na.rm = TRUE),
+    mean_n_ref_bio_philo = mean(n_ref_bio_philo, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+philo_bio_articles_in_general <- philo_bio_articles_in_general |> select(prism_cover_date, mean_n_ref,  mean_n_ref_bio_philo)
+
+      
+}
+
+
+data_for_viz <- philo_bio_in_general_by_year(BJPS_articles, BJPS_references)
+
+viz_philo_bio_in_general_by_year <- function(data) { 
+  data_long <- data |> pivot_longer(cols = c(mean_n_ref, mean_n_ref_bio_philo),
+                                             names_to = "category",
+                                             values_to = "count") |> distinct()
+  g <- ggplot(data_long, aes(x = prism_cover_date, y = count, fill = category)) +
+    geom_bar(stat = "identity", position = "stack") +
+    labs(
+      title = "Temporal Distribution of references to philosophy of biology in philosophy articles published in generalist philosophy of science journals",
+      x = "Year", 
+      y = "No. of Papers", 
+      fill = "Category")
+  show(g)
+}
+```
+
+```{r}
+viz_philo_bio_in_general_by_year(data_for_viz)
+```
+
+
+
+
+
+
+
+
+
+
+

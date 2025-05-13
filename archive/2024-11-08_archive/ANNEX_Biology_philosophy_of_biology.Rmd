@@ -1,0 +1,237 @@
+---
+title: "ANNEXE Biology in philosophy of biology"
+author: "Jacob Hamel-Mottiez"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: true
+---
+
+```{r setup, include=FALSE}
+library(d3r)
+library(DT)
+library(forcer)
+library(ggraph)
+library(igraph)
+library(maps)
+library(plotly)
+library(readxl)
+library(tidyverse)
+library(tidygraph)
+library(viridis)
+library(scales)
+
+
+
+
+#dir <- "/media/louis/05E2-13B8/BioWOS/data/"
+dir <- "C:/Users/jacob/OneDrive - Université Laval/DATA/"
+
+
+# DATA --------------------------------------------------------------------
+# on doit enlever les deux dernières lignes de revues et philo_bio parce que c'est de la bouette
+revues <- read_tsv(paste0(dir,"WOS_revues.rpt")) %>% slice(1:(n()-2)) # 21 296
+bio_and_philo <- read_tsv(paste0(dir,"philo_of_bio_refs.rpt")) %>% # 135 546
+  slice(1:(n()-2)) %>% # 135 544
+  distinct() # 67 774
+liste_discipline <- read_excel(paste0(dir,"Liste_discipline.xlsx")) # 144
+
+
+bio_and_philo %>% distinct() %>% nrow() #  67774
+test <- bio_and_philo %>% count(OST_BK,Ordre,UID,UID_Ref,Cited_Author,Year,
+                        Volume,Page,Doi,Cited_Title,Cited_Work,Patent_No,
+                        Assignee,Art_No,Occurence_Order) %>% 
+  filter(n==1)
+
+test$Cited_Title
+bio_and_philo %>% filter(str_detect(Cited_Title, "The importance of symbiosis in philosophy of biology"))
+bio_and_philo %>% filter(str_detect(Cited_Author, "Suarez, J"))
+
+
+
+bio_and_philo %>% filter(Cited_Work == "NULL") %>% nrow() # 22
+
+test <- bio_and_philo %>% count(Cited_Work) %>% arrange(Cited_Work)
+
+data_revue <- bio_and_philo %>% 
+  filter(Cited_Work != "NULL") %>% 
+  left_join(revues, by = c("Cited_Work" = "Revue")) %>% 
+  left_join(liste_discipline, by = c("Code_discipline" = "Code_Discipline")) %>% # 67 752
+  filter(!is.na(Code_discipline)) # 34 080
+
+data_abbrev <- bio_and_philo %>% 
+  filter(Cited_Work != "NULL") %>% 
+  left_join(revues, by = c("Cited_Work" = "Abbrev_11")) %>% 
+  left_join(liste_discipline, by = c("Code_discipline" = "Code_Discipline")) %>% 
+  filter(!is.na(Code_discipline)) # 8524
+
+data <- bind_rows(data_revue, data_abbrev)
+
+# il y a 67344 publications sans correspondance entre Cited_Work et revues...
+# ... proche de 50% ... pas très convaincant
+
+
+
+
+
+
+
+```
+
+## TOP CITED JOURNALS, DISCIPLINES AND SPECIALITIES
+This descriptive data [to complete]
+
+```{r TOP CITED JOURNALS, cache = TRUE}
+# WHAT ARE THE TOP CITED JOURNALS IN B&P? ------------------------ ---------
+top_journals <- data %>% count(Code_Revue, sort = T) %>% 
+  left_join(revues)
+
+# WHAT ARE THE TOP CITED JOURNALS, DISCIPLINES, SPECIALITIES IN B&P? ---------------------------------
+top_discipline <- data %>% count(Discipline, sort = T)
+top_specialite <- data %>% count(Specialite, sort = T)
+
+top_discipline_top_journaux <- data %>% 
+  filter(Code_Revue %in% top_journals$Code_Revue[1:20]) %>% 
+  count(Discipline, sort = T)
+
+
+fct_DT <- function(x) {datatable(x, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))}
+
+fct_percent <- function(x) {
+  x <-  x |>  mutate(percent = n/sum(x$n, na.rm = TRUE)*100)
+}
+
+list_table <- list(top_journals, top_discipline, top_specialite, top_discipline_top_journaux)
+
+lapply(list_table, fct_percent)
+lapply(list_table, fct_DT)
+
+
+```
+
+## PROPORTION OF DOCUMENT TYPE IN THE CORPUS
+All the documents of the corpus have a Code_Dicument number. 
+The variable EType_Document has more non-null entries than Type_Document variable. 
+
+```{r DOCUMENT TYPE, echo=FALSE, cache = TRUE}
+# WHAT IS THE DISTRIBUTION OF DOCUMENTS ?-----------------------------------
+document_type <- read_tsv(paste0(dir, "p.ex.Liste_Document.rpt")) %>% 
+  slice(1:(n()-2))
+art_doc_type <- read_tsv(paste0(dir, "cited_citant_B&P.rpt")) %>% 
+  slice(1:(n()-2))
+
+
+document_type <- document_type |> mutate(Code_Document = as.character(Code_Document))
+art_doc_type <- art_doc_type|> mutate(Code_Document = as.character(Code_Document))
+art_doc_type |> filter(is.na(Code_Document) | Code_Document == "NULL") # 0
+
+art_doc_type_count <- art_doc_type |> count(Code_Document, sort = T) 
+doc_type_n <- left_join(document_type, art_doc_type_count, by = "Code_Document") |> arrange(-n)
+doc_type_n <-  doc_type_n |>  mutate(percent = n/sum(doc_type_n$n, na.rm = TRUE)*100)
+
+fct_percent(doc_type_n)
+fct_DT(doc_type_n)
+
+
+```
+
+## MAPPING THE MOST PRODUCTIVE COUNTRIES
+
+```{r MAP, cache = TRUE, echo=FALSE}
+# WHAT ARE THE MOST CITED COUNTRY? ----------------------------------------
+adresses <- read_tsv(paste0(dir, "articles_adress_B&P.rpt"))
+art_country <- adresses |> count(Pays, sort = T) |> rename(region = Pays)
+
+# Visualisation of it. 
+world_df <-  map_data("world")
+world_df$region <- toupper(world_df$region)
+world_df <- left_join(world_df, art_country, by = "region")
+
+p <- ggplot(world_df, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill= n), color = "white") +
+  scale_fill_viridis(option="D", begin = 0.1, end = 0.7, direction = 1) 
+ggplotly(p)
+```
+
+## NETWORK
+```{r NETWORK, echo=FALSE, cache = TRUE}
+# NETWORK OF CITING AND CITED ---------------------------------------------
+data_network <- read_tsv(paste0(dir, "cited_citant_B&P.rpt")) |> slice(1:(n()-2))
+
+
+data_network <- data_network |> select(OST_BK_Cite, OST_BK_Citant, Titre, Annee_Bibliographique)
+data_network <- data_network |> rename(OST_BK = OST_BK_Cite)
+
+# MATCHING REFS WITH SPECIALITIES
+match_data <-  data |> select(OST_BK, EGrande_Discipline, EDiscipline, ESpecialite)
+data_network <-  left_join(match_data, data_network, by = "OST_BK") |> filter(!is.na(OST_BK_Citant))
+
+
+EDiscipline <- c("Biomedical Research", "Social Sciences", "Biology", 
+                 "Humanities", "Clinical Medicine", "Psychology", 
+                 "Professional Fields", "Earth and Space", 
+                 "Mathematics", "Physics", "unknown")
+
+# Vector of associated colors
+edgeColor <- c("#5c7bbd", "#f08c39", "#db4743", 
+            "#78c19f", "#52c497", "#a97db8", 
+            "#db7f87", "#bf856c", 
+            "#c9a377", "#75767d", "#50525d")
+
+code_color <- tibble(EDiscipline, edgeColor)
+
+data_network <- left_join(data_network, code_color, by = "EDiscipline")
+
+          
+data_network_small <- data_network |> 
+  select(OST_BK, OST_BK_Citant, edgeColor) |> 
+  distinct()
+
+# Create the graph
+co_citation <- data_network_small |>
+  as_tbl_graph(directed = FALSE,
+    nodes = "OST_BK",
+    edges = "OST_Citant"
+  )
+
+num_communities <- 68  # Assuming 68 communities
+hex_colors <- hue_pal()(num_communities)
+
+nodes_names <- data_network |> select(name = OST_BK_Citant, Titre) |>
+  mutate(name = as.character(name))|> 
+  distinct()  
+# 636 nodes names over 805, ~ 80%. 
+
+node_weights <- co_citation |>
+  activate(nodes) |>
+  left_join(nodes_names, by = c("name")) |>
+  mutate(name = coalesce(Titre, name)) |>
+  mutate(weight = centrality_degree(mode = "in")) |> 
+  filter(weight > 8) |> mutate(community = group_louvain()) |>
+  mutate(color = hex_colors[as.numeric(factor(community))])
+ 
+
+# VISUALISATION
+g_g <- d3r::d3_igraph(node_weights)
+
+forcer(
+  data = g_g,
+  forcetype = "ForceGraph2D",
+  linkCurvature = 0.5, 
+  NodeLabel = TRUE, 
+  nodeThreeObjectExtend= FALSE,
+  nodeVal = "weight", 
+  #linkColor = "edgeColor",
+  nodeColor = "color"
+)
+
+
+
+```
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

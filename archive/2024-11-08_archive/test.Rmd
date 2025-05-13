@@ -1,0 +1,23 @@
+---
+title: "Untitled"
+author: "Jacob Hamel-Mottiez"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+---
+title: "Test"
+author: "zieger_medice"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DT)
+```
+
+But as soon as it is embedded in the drop down through details, it does not show. 
+```{r, results='asis'}
+datatable(iris)
+```
+
