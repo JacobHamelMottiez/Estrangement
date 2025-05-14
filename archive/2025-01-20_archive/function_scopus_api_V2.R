@@ -17,10 +17,10 @@ dir_od <- "C:/Users/jacob/OneDrive - Université Laval/biophilo/"
 
 
 # API -----------------------------------------------------------
-api_key <- "db914ab9d5f084e447fa55aa8c441393"
+api_key <- Sys.getenv("Elsevier_api")
 set_api_key(api_key)
 
-insttoken <- "d7e05f3ac9d63a6d51b9170681078e96"
+insttoken <- Sys.getenv("Elsevier_insttoken")
 insttoken <- inst_token_header(insttoken)
 
 
