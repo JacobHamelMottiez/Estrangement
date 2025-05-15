@@ -4,7 +4,7 @@ This Github repo is to keep track of the computational work I did during my mast
 
 ## HTML 
 For those who want to look at the various html files where the principal results are, the simplest way is to click on the following link : 
-- [FULL](https://htmlpreview.github.io/?https://github.com/JacobHamelMottiez/Estrangement/blob/main/Notebooks/appendix_master)
+- [FULL](https://github.com/JacobHamelMottiez/Estrangement/blob/main/Notebooks/Appendix_master.html)
 - [CHP1](https://htmlpreview.github.io/?https://github.com/JacobHamelMottiez/Estrangement/blob/main/Notebooks/chapters_appendix/CHP1_appendix.html)
 - [CHP2](https://htmlpreview.github.io/?https://github.com/JacobHamelMottiez/Estrangement/blob/main/Notebooks/chapters_appendix/CHP2_appendix.html)
 - [CHP3](https://htmlpreview.github.io/?https://github.com/JacobHamelMottiez/Estrangement/blob/main/Notebooks/chapters_appendix/CHP3_appendix.html)
