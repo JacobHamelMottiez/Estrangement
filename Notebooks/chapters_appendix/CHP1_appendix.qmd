@@ -1,26 +1,508 @@
 ---
-title: "CHP3_appendix"
-format: html
-editor: visual
+title: "Chapitre 2 : Une obsession philosophique? Le cas de la philosophie de la biologie"
+date: 2025-04-28
+author:
+  - name: Jacob Hamel-Mottiez
+    id: jhm
+    orcid: 0009-0007-3666-908X
+    email: jacob.hamel-mottiez.1@ulaval.ca
+    affiliation: 
+      - name: Laval University
+
+abstract:
+    Annexe technique pour le chapitre 2. 
+
+execute: 
+  freeze: auto  # re-render only when source changes
+  #enabled: true # This is so that Plotly is rendered. 
+format: 
+  html:
+    code-fold: true
+    toc: true
+    number-sections: true
+    fig_width: 100%   # Width will be 100% of the container
+    fig_height: 500   # Height in pixels
+keywords:
+  - Philosophy of Biology
+  - Biology
+  - Bibliometrics
+  - Topic modeling
+  - BERTopic
+
+brand:
+  light: "C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/united-brand.yml"
+  dark: "C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/slate-brand.yml"
+
+license: "CC BY"
+copyright: 
+  holder: Jacob Hamel-Mottiez
+  year: 2024
+funding: "The author received funding from the Social Sciences and Humanities Canadian Reseach Council (SSHCRC) as well as from the Fonds de recherche du Québec - Société et culture."
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
 
 ```{r}
-1 + 1
+#| echo: false
+#| warning: false
+
+# PACKAGES ----------------------------------------------------------------
+library(dplyr)
+library(refinr)
+library(DT)
+library(data.table)
+library(readr)
+library(ggplot2)
+require(patchwork)
+library(ggplot2)
+library(ggrepel)
+library(readxl)
+library(tidyverse)
+```
+
+<!--# Dark theme plotly settings -->
+```{r DARK THEME PLOTLY}
+#| echo: false
+#| warning: false
+
+library(plotly)
+
+plotly_brand <- function(brand_yml, title, x, y) {
+  brand <- yaml::yaml.load_file(brand_yml)
+  return (
+    function(plot)
+      plot |> layout(
+        paper_bgcolor = brand$color$background,
+        plot_bgcolor = brand$color$background,
+        title = list(font = list(
+          color = brand$color$foreground, size = 20
+        )),
+        # Plot title font
+        xaxis = list(
+          titlefont = list(color = brand$color$foreground, size = 16),
+          # x-axis title font
+          tickfont = list(color = brand$color$foreground, size = 14)      # x-axis tick font
+        ),
+        yaxis = list(
+          titlefont = list(color = brand$color$foreground, size = 16),
+          # y-axis title font
+          tickfont = list(color = brand$color$foreground, size = 14)      # y-axis tick font
+        )
+      )
+  )
+}
+      
+      
+
+united_theme <- plotly_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/united-brand.yml')
+slate_theme <- plotly_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/slate-brand.yml')
+
+```
+
+<!--# Dark theme ggplot settings -->
+```{r DARK THEME ggplot2}
+#| warning: false
+
+ggplot_theme_colors <- function(bgcolor, fgcolor) {
+  theme_minimal(base_size = 11) %+%
+    theme(
+      panel.border = element_blank(),
+      #panel.grid.major.y = element_line(colour = fgcolor),
+      panel.grid.minor.y = element_line(colour = fgcolor),
+      #panel.grid.major.x = element_line(colour = fgcolor),
+      panel.grid.minor.x = element_line(colour = fgcolor),
+      text = element_text(colour = fgcolor),
+      axis.text = element_text(colour = fgcolor),
+      rect = element_rect(colour = bgcolor, fill = bgcolor),
+      plot.background = element_rect(fill = bgcolor, colour = NA),
+      #axis.line = element_line(colour = fgcolor),
+      axis.ticks = element_line(colour = fgcolor), 
+      strip.text = element_text(colour = fgcolor)
+    )
+}
+
+ggplot_theme_brand <- function(brand_yml) {
+  brand <- yaml::yaml.load_file(brand_yml)
+  ggplot_theme_colors(brand$color$background, brand$color$foreground)
+}
+
+united_theme_gg<- ggplot_theme_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/united-brand.yml')
+slate_theme_gg <- ggplot_theme_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/slate-brand.yml')
+```
+
+<!--# Tables setting -->
+```{r DARK THEME gt}
+
+#| echo: false
+#| warning: false
+
+gt_theme_colors <- function(bg, fg)
+  (function(table)
+    table |>
+    tab_options(
+      table.background.color=bg,
+      table.font.color=fg,
+    )
+  )
+
+
+gt_theme_brand <- function(brand_yml) {
+  brand <- yaml::yaml.load_file(brand_yml)
+  gt_theme_colors(brand$color$background, brand$color$foreground)
+}
+united_theme_gt <- gt_theme_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/united-brand.yml')
+slate_theme_gt <- gt_theme_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/slate-brand.yml')
+
+interactivity  <- function(data) {
+  opt_interactive(data,
+  use_search = TRUE,
+  use_filters = FALSE,
+  use_resizers = TRUE,
+  use_highlight = TRUE,
+  use_compact_mode = FALSE,
+  use_text_wrapping = TRUE,
+  use_page_size_select = FALSE,
+  page_size_default = 10,
+  page_size_values = c(10, 25, 50, 100),
+  pagination_type = c("numbers", "jump", "simple"),
+  height = "auto"
+)
+}
 ```
 
 You can add options to executable code like this
 
 ```{r}
-#| echo: false
-2 * 2
+#| warning: false
+#| message: false
+#| renderings: [light,dark]
+
+# LOADING DATA ------------------------------------------------------------
+dir <- "C:/Users/jacob/OneDrive - Université Laval/Mon ordinateur portable/RSTUDIO/Data/"
+
+
+pins_authors <- read_excel("C:/Users/jacob/OneDrive - Université Laval/Mon ordinateur portable/RSTUDIO/Data/PinS_Table.xlsx")
+
+
+# DATA MANIPULATION -------------------------------------------------------
+pins_authors <- pins_authors %>% separate_longer_delim(Authors, delim = ";")
+pins_authors_unique <- pins_authors |> arrange(Authors) |> unique() # N = 298
+
+# SAVING 
+#xlsx::write.xlsx(pins_authors_unique, "C:/Users/jacob/Dropbox/PC/Desktop/RSTUDIO/Data/PinS_Table_authors_unique.xlsx")
+
+# MOST PRODUCTIVE Discipline PINS -----------------------------------------
+PinS_Discipline_year <- read_excel(paste0(dir,"PinS_Discipline_year.xlsx"))
+PinS_Discipline_year <- data.table(PinS_Discipline_year)
+PinS_Discipline_year[, N := .N, by = Discipline]
+
+# All Years
+plot <- ggplot(PinS_Discipline_year, aes(x = reorder(Discipline, N), color = Discipline, fill = Discipline)) + 
+  geom_histogram(stat = "count") + 
+  labs(title = "PinS Articles per Discipline", x = "Discipline", y = "Count")
+
+
+ggplotly(plot + united_theme_gg) |> united_theme() |> layout(showlegend = F, xaxis = list(tickangle=45))
+ggplotly(plot + slate_theme_gg) |> slate_theme() |> layout(showlegend = F, xaxis = list(tickangle=45))
+
+
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+
+```{r}
+#| renderings: [light,dark]
+# Each Decades
+PinS_Discipline_year[, N_year := .N, by = .(Discipline, Year)] # This is for each year.
+time_window <- seq(1970, 2017, 10)
+
+
+# Function for time window
+for(i in 1:(length(time_window))){
+  if(time_window[i] == 2010){
+    PinS_Discipline_year[Year >= 2010, 
+                start_window := 2010]}
+  else{
+    PinS_Discipline_year[Year >= time_window[i] & Year < time_window[i+1], 
+                start_window := time_window[i]]
+  }
+}
+
+PinS_Discipline_year[, N_window := .N, by =.(Discipline, start_window)] # This is for each decade. 
+#unique(PinS_Discipline_year[, .(start_window,N_window), by = Discipline]) # The decades where there is 0 citation are missing.
+
+# Missing values. 
+# g <- ggplot(PinS_Discipline_year, aes(x = start_window, y = N_window, 
+#                                       color = Discipline, fill = Discipline, group = Discipline)) + 
+#   geom_point(size = 3) +
+#   geom_smooth(method = "loess")
+# ggplotly(g)
+
+
+start_window <- seq(1970, 2017, 10)
+PinS_Discipline_plus <- expand_grid(start_window, unique(PinS_Discipline_year$Discipline)) 
+PinS_Discipline_plus <- PinS_Discipline_plus |> arrange(`unique(PinS_Discipline_year$Discipline)`)
+PinS_Discipline_plus <- rename(PinS_Discipline_plus, Discipline = `unique(PinS_Discipline_year$Discipline)`)
+
+PinS_Discipline_year$N_year <- NULL
+PinS_Discipline_year$Year <- NULL
+
+PinS_Discipline_plus <- left_join(PinS_Discipline_plus,PinS_Discipline_year, by = c("Discipline", "start_window")) |> unique()
+PinS_Discipline_plus <- PinS_Discipline_plus %>% replace(is.na(.), 0)
+STEM <- c("Computers", "Engineering", "Logic", "Mathematics", "Physics", "Earth and Atmospheric Science")
+
+health <- c("Biology", "Medicine", "Neuroscience", "Psychiatry")
+STEM_disc <- PinS_Discipline_plus |> filter(Discipline %in% STEM) |> mutate(is_STEM = TRUE)
+health_disc <- PinS_Discipline_plus |> filter(Discipline %in% health) |> mutate(is_STEM = FALSE)
+PinS_Discipline_plus <- rbind(STEM_disc, health_disc)
+PinS_Discipline_plus <- rename(PinS_Discipline_plus, Discipline = Discipline)
+
+## ALL Discipline GGPLOT ---------------------------------------------------
+A <- ggplot(PinS_Discipline_plus, aes(x = start_window, 
+                                      y = N_window, 
+                                      color = Discipline, 
+                                      fill = Discipline, 
+                                      group = Discipline)) + 
+  geom_point(size = 2) +
+  geom_smooth(linewidth = 1)
+
+
+
+## Health GGPLOT -----------------------------------------------------------
+health_disc <- PinS_Discipline_plus |> filter(Discipline %in% health)
+H <- ggplot(health_disc, aes(x = start_window, 
+                             y = N_window, 
+                             color = Discipline, 
+                             fill = Discipline, 
+                             group = Discipline)) + 
+  geom_point(size = 2) +
+  geom_smooth(linewidth = 1)
+
+
+
+## STEM GGPLOT -------------------------------------------------------------
+STEM_disc <- PinS_Discipline_plus |> filter(Discipline %in% STEM)
+S <- ggplot(STEM_disc, aes(x = start_window, 
+                             y = N_window, 
+                             color = Discipline, 
+                             fill = Discipline, 
+                             group = Discipline)) + 
+  geom_point(size = 2) +
+  geom_smooth(linewidth = 1)
+
+
+
+## FACET HEALTH VS STEM ----------------------------------------------------
+A <- ggplot(PinS_Discipline_plus, aes(x = start_window, 
+                                      y = N_window,
+                                      color = Discipline)) + 
+  geom_point(size = 2) +
+  geom_line() +
+  #theme_bw()+
+  facet_grid(cols = vars(is_STEM), labeller = labeller(is_STEM = c("FALSE" = "Health Disciplines", "TRUE" = "STEM Disciplines"))) +
+  labs( color = "Disciplines", x = "Decade", y = "N. of Citations")
+
+
+ggplotly(A + united_theme_gg) |> united_theme()
+ggplotly(A + united_theme_gg) |> slate_theme()
+
+
+```
+
+
+
+## Pradeu's Results (Philosophy of Biology)
+```{r}
+#| renderings: [light,dark]
+
+
+# Names of the disciplines
+disciplines_BP_2003_2015 <- tibble(
+  discipline = c(
+    "Agricultural Sciences",
+    "Anthropology",
+    "Applied Biological Sciences",
+    "Biophysics & Computational Biology",
+    "Cell Biology",
+    "Environmental Sciences",
+    "Immunology & Inflammation",
+    "Microbiology",
+    "Pharmacology",
+    "Physiology",
+    "Plant Biology",
+    "Population Biology",
+    "Sustainability Science",
+    "Systems Biology",
+    "Evolution",
+    "Developmental Biology",
+    "Biochemistry",
+    "Psychological and Cognitive Sciences",
+    "Neuroscience",
+    "Medical Sciences",
+    "Genetics",
+    "Ecology"
+  ),
+  percentage = c(0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 62, 4, 2, 14, 3, 2, 5, 3),
+  journal = "B&P"
+)
+
+disciplines_BP_1986_2002 <- tibble(
+  discipline = c(
+    "Evolution",
+    "Others",
+    "Reflections on Biology in general",
+    "Evolutionary Ethics",
+    "Evolutionary Epistemology",
+    "Genetics",
+    "Ecology",
+    "Species",
+    "Taxonomy",
+    "Function, Teleology, Design"
+  ),
+  percentage = c(25, 25, 6, 11, 12, 3, 4, 9, 3, 4),
+  journal = "B&P"
+)
+
+
+# Combine into a data frame (optional)
+BP_tb <- rbind(disciplines_BP_1986_2002, disciplines_BP_2003_2015)
+
+
+# ggplot
+p1 <- ggplot(data = BP_tb, mapping = aes(x=discipline, y = percentage, color = discipline, fill = discipline)) + 
+  geom_bar(stat = "identity") + 
+  theme(
+    legend.position="bottom", 
+    legend.box = "horizontal",
+    legend.title = element_blank(),
+    axis.text.x=element_blank(), 
+    axis.ticks.x=element_blank()
+    ) + 
+  labs(title = "Themes in Biology in Philosophy according to Pradeu", x = "Discipline", y = "Percentage")
+
+
+ggplotly(p1 + united_theme_gg) |> united_theme() |> 
+  layout(xaxis = list(showticklabels=F, ticks = ""))
+
+ggplotly(p1 + slate_theme_gg) |> slate_theme() |> 
+  layout(xaxis = list(showticklabels=F, ticks = ""))
+```
+
+## Pradeu's Results (Biology)
+```{r}
+#| renderings: [light,dark]
+
+
+# PNAS --------------------------------------------------------------------
+# Names of the disciplines
+disciplines_PNAS <- tibble(
+  discipline = c(
+    "Population Biology",
+    "Plant Biology",
+    "Physiology",
+    "Pharmacology",
+    "Neuroscience",
+    "Microbiology",
+    "Medical Sciences",
+    "Immunology & Inflammation",
+    "Genetics",
+    "Biochemistry",
+    "Biophysics & Computational Biology",
+    "Cell Biology",
+    "Ecology",
+    "Evolution",
+    "Developmental Biology",
+    "Environmental Sciences",
+    "Applied Biological Sciences",
+    "Anthropology",
+    "Agricultural Sciences",
+    "Systems Biology",
+    "Psychological and Cognitive Sciences",
+    "Sustainability Science"
+  ),
+  percentage = c(0, 4, 2, 1, 12, 7, 10, 7, 5, 12, 9, 8, 3, 5, 3, 2, 2, 2, 1, 1, 3, 1)
+  )
+
+
+# Combine into a data frame (optional)
+PNAS_tb <- disciplines_PNAS |> mutate(journal = "PNAS")
+
+plot <- ggplot(data = PNAS_tb, mapping = aes(x=discipline, y = percentage, color = discipline, fill = discipline)) + 
+  geom_bar(stat = "identity") + 
+  theme(
+  legend.position="bottom", 
+  legend.box = "horizontal",
+  legend.title = element_blank(),
+  axis.text.x=element_blank(), 
+  axis.ticks.x=element_blank(), 
+) + labs(title = "Themes in PNAS", x = "Discipline", y = "Percentage") + 
+  ylim(c(0,60))
+
+ggplotly(plot + united_theme_gg) |> united_theme() |> 
+  layout(showlegend = T, xaxis = list(showticklabels=F, ticks = ""), xaxis2 = list(showticklabels=F, ticks = ""))
+
+ggplotly(plot + slate_theme_gg) |> slate_theme() |> 
+  layout(xaxis = list(showticklabels=F, ticks = ""), xaxis2 = list(showticklabels=F, ticks = ""))
+
+
+```
+
+## Compare Biology and Philosophy of biology
+```{r}
+#| renderings: [light,dark]
+
+# Merged data.table
+merged_tb  <- rbind(PNAS_tb, BP_tb)
+
+
+plot <- ggplot(data = merged_tb, mapping = aes(x = discipline, y = percentage, fill = discipline)) + 
+    geom_bar(stat = "identity") +
+    labs(x = "Discipline", y = "Pourcentage")+
+    facet_grid(~journal)
+
+
+ggplotly(plot + united_theme_gg) |> united_theme() |> 
+  layout(showlegend = T, xaxis = list(showticklabels=F, ticks = ""), xaxis2 = list(showticklabels=F, ticks = ""))
+
+ggplotly(plot + slate_theme_gg) |> slate_theme() |> 
+  layout(xaxis = list(showticklabels=F, ticks = ""), xaxis2 = list(showticklabels=F, ticks = ""))
+
+```
+
+
+Malaterre Results
+```{r}
+#| renderings: [light,dark]
+
+
+# Malaterre et al. (2020) vs Pradeu (2017) --------------------------------
+TM_dt <- data.table(
+  Discipline = c("A-Evolution", 
+               "B-Individuality-Altruism", 
+               "C-Species-Ecology", 
+               "D-Genetics-Development", 
+               "E-Network-entropy-information", 
+               "F-Cognition-behavior", 
+               "G-Socio-normative issues", 
+               "H-General philosophy of science", 
+               "I-Others"),
+  Percentage = c(18, 8, 9, 10, 6, 10, 9, 22, 8),
+  Data = c("TM")
+)
+
+
+plot <- ggplot(data = TM_dt, mapping = aes(x = Discipline, y = Percentage, fill = Discipline)) + 
+  geom_bar(stat = "identity") + 
+  ylim(c(0,60)) + 
+  labs(title = "Themes in philosophy of biology using LDA")
+
+
+ggplotly(plot + united_theme_gg) |> united_theme() |> layout(showlegend = F, xaxis = list(tickangle=45))
+ggplotly(plot + slate_theme_gg) |> slate_theme() |> layout(showlegend = F, xaxis = list(tickangle=45))
+
+
+```
+
+## How Does these themes evolves through time? 
+*to do* 
+
+
+

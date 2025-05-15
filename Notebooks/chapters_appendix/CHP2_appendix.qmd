@@ -41,7 +41,6 @@ copyright:
 funding: "The author received funding from the Social Sciences and Humanities Canadian Reseach Council (SSHCRC) as well as from the Fonds de recherche du Québec - Société et culture."
 ---
 
-format: html editor: visual ---
 
 ```{r}
 #| warning: false

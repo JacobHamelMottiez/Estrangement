@@ -1,5 +1,5 @@
 ---
-title: "Bertopic with abstracts of *Biology and Philosophy* "
+title: "A concerning Estrangement? The case of *Biology and Philosophy* "
 date: 2025-04-28
 author:
   - name: Jacob Hamel-Mottiez
@@ -33,20 +33,20 @@ copyright:
   holder: Jacob Hamel-Mottiez
   year: 2025
 
-funding: "The author received funding from the Social Sciences and Humanities Canadian Reseach Council (SSHCRC) as well as from the Fonds de recherche du Qu??bec - Soci??t?? et culture."
+funding: "The author received funding from the Social Sciences and Humanities Canadian Reseach Council (SSHCRC) as well as from the Fonds de recherche du Québec - Société et culture."
 
 brand:
-  light: "C:/Users/jacob/OneDrive - Universit\u00e9 Laval/quarto-light-dark-experiments/united-brand.yml"
-  dark: "C:/Users/jacob/OneDrive - Universit\u00e9 Laval/quarto-light-dark-experiments/slate-brand.yml"
+  light: "C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/united-brand.yml"
+  dark: "C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/slate-brand.yml"
 ---
 
 # What is this file about?
 
-This file is the technical appendix for my master thesis under the supervision of Pierre-Olivier MC)thot (UL) and FranC'ois Claveau (UdS). Note that the information about how we got our data is in another file : `C:/Users/jacob/OneDrive - UniversitC) Laval/biophilo/fetch_data_2024-11-18.Rmd`.
+This file is the technical appendix for my master thesis under the supervision of Pierre-Olivier Méthot (UL) and François Claveau (UdS). Note that the information about how we got our data is in another file : `C:/Users/jacob/OneDrive - Université Laval/biophilo/fetch_data_2024-11-18.Rmd`.
 
-Special thanks to FranC'ois Claveau, Pierre-Olivier MC)thot, Louis Renaud-Desjardins, Thomas Pradeu and MaC+l Lemoine for their support on this projet.
+Special thanks to François Claveau, Pierre-Olivier Méthot, Louis Renaud-Desjardins, Thomas Pradeu and Maël Lemoine for their support on this projet.
 
-For any questions or issues, please write at [jacob.hamel-mottiez.1\@ulaval.ca](mailto:jacob.hamel-mottiez.1@ulaval.ca){.email}.
+For any questions or issues, please write at [jacob.hamel-mottiez.1/@ulaval.ca](mailto:jacob.hamel-mottiez.1@ulaval.ca){.email}.
 
 <!--# Dark theme plotly settings -->
 ```{r DARK THEME PLOTLY}
@@ -83,8 +83,8 @@ plotly_brand <- function(brand_yml, title, x, y) {
       
       
 
-united_theme <- plotly_brand('C:/Users/jacob/OneDrive - Universit\u00e9 Laval/quarto-light-dark-experiments/united-brand.yml')
-slate_theme <- plotly_brand('C:/Users/jacob/OneDrive - Universit\u00e9 Laval/quarto-light-dark-experiments/slate-brand.yml')
+united_theme <- plotly_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/united-brand.yml')
+slate_theme <- plotly_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/slate-brand.yml')
 
 ```
 
@@ -114,8 +114,8 @@ ggplot_theme_brand <- function(brand_yml) {
   ggplot_theme_colors(brand$color$background, brand$color$foreground)
 }
 
-united_theme_gg<- ggplot_theme_brand('C:/Users/jacob/OneDrive - Universit\u00e9 Laval/quarto-light-dark-experiments/united-brand.yml')
-slate_theme_gg <- ggplot_theme_brand('C:/Users/jacob/OneDrive - Universit\u00e9 Laval/quarto-light-dark-experiments/slate-brand.yml')
+united_theme_gg<- ggplot_theme_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/united-brand.yml')
+slate_theme_gg <- ggplot_theme_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/slate-brand.yml')
 
 ```
 
@@ -138,8 +138,8 @@ gt_theme_brand <- function(brand_yml) {
   brand <- yaml::yaml.load_file(brand_yml)
   gt_theme_colors(brand$color$background, brand$color$foreground)
 }
-united_theme_gt <- gt_theme_brand('C:/Users/jacob/OneDrive - Universit\u00e9 Laval/quarto-light-dark-experiments/united-brand.yml')
-slate_theme_gt <- gt_theme_brand('C:/Users/jacob/OneDrive - Universit\u00e9 Laval/quarto-light-dark-experiments/slate-brand.yml')
+united_theme_gt <- gt_theme_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/united-brand.yml')
+slate_theme_gt <- gt_theme_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/slate-brand.yml')
 ```
 
 ```{r GT}
@@ -262,7 +262,7 @@ To compare each database coverage (Web of Science, Scopus and Springer) we will 
 
 ```{r DATA B&P WOS, cache = TRUE, include = FALSE, message=FALSE}
 #DIRECTORY AND DATE 
-dir_od <- "C:/Users/jacob/OneDrive - Universit\u00e9 Laval/DATA/"
+dir_od <- "C:/Users/jacob/OneDrive - Université Laval/DATA/"
 date <- "2024-09-23"
 
 # COLUMN NAMES FOR WOS DATA
@@ -362,7 +362,7 @@ Let's start by making sure that we have a good coverage for articles. Unsurprisi
 
 ```{r DATA, echo = FALSE, message = FALSE, warning = FALSE}
 
-dir_data <-  "C:/Users/jacob/OneDrive - Universit\u00e9 Laval/biophilo/Data/"
+dir_data <-  "C:/Users/jacob/OneDrive - Université Laval/biophilo/Data/"
 
 # ARTICLES
 articles_special_philo_bio_reformat <- read_csv(paste0(dir_data, "pybiblio/SPECIALIZED PHILOSOPHY OF BIOLOGY/articles_special_philo_bio_reformat.csv"))
@@ -434,7 +434,7 @@ For Web of Science, we uncover that many many references had no unique identifie
 Here is some quantitative data :
 
 1)  We have a total of 67 774 cited document for our B&P corpus.
-2)  43 828 cited document have a Cited_Title (\~ 24 000 lost already).
+2)  43 828 cited document have a Cited_Title (/~ 24 000 lost already).
 3)  31 439 cited document have Cited_Title and/or an OST_BK_Ref (the OST_BK or unique identifier for a cited document, see "Cited authors (references' authors)" section of the SQL script above).
 
 Given that this 31 439 cited document corpus doesn't contain book and book chapter which we are interested in getting, this is problematic. Compared to this important limitation, Scopus do much better.
@@ -556,7 +556,10 @@ fct_DT(
 )
 
 
-dt <- gt(art_all_BT) |> interactivity()
+dt <- gt(art_all_BT |>
+  group_by(FROM) |>
+  summarise(total_N = sum(N)) |>
+  arrange(desc(total_N))) |> interactivity()
 dt |> united_theme_gt()
 dt |> slate_theme_gt()
 
@@ -641,21 +644,21 @@ Lets look at an example. Here, we see that the famous book by Richard Dawkins *T
 # Define extraction patterns
 extract_authors <- paste0(
   "^",                                         
-  "(?:[A-Z]+(?:[-'][A-Z]+)*\\s+)*",  # Matches first part of author name allowing hyphens and apostrophes
+  "(?:[A-Z]+(?:[-'][A-Z]+)*//s+)*",  # Matches first part of author name allowing hyphens and apostrophes
   "(?:[A-Z]+(?:[-'][A-Z]+)*)",      # Matches last part of author name allowing hyphens and apostrophes
-  "\\s+[A-Z](?:\\.[A-Z])*\\.",      # Matches initials (e.g., J. or J.A.)
-  "(?:,\\s+",                                  
-  "(?:[A-Z]+(?:[-'][A-Z]+)*\\s+)*",  # Matches first part of additional author names
+  "//s+[A-Z](?://.[A-Z])*//.",      # Matches initials (e.g., J. or J.A.)
+  "(?:,//s+",                                  
+  "(?:[A-Z]+(?:[-'][A-Z]+)*//s+)*",  # Matches first part of additional author names
   "(?:[A-Z]+(?:[-'][A-Z]+)*)",      # Matches last part of additional author names
-  "\\s+[A-Z](?:\\.[A-Z])*\\.",      # Matches initials of additional authors
+  "//s+[A-Z](?://.[A-Z])*//.",      # Matches initials of additional authors
   ")*"                                         
 )
 
-extract_year <- "\\b(\\d{4})\\b"
-extract_journal <- "[A-Z][A-Za-z\\s]+(?=\\,\\s\\d)" 
-extract_volume <- "\\b\\d+\\b(?=\\,|\\s)" 
-extract_issue <- "(?<=\\,\\s)(?:[A-Z])?\\d+(?=\\,|\\s|\\()|(?<=\\,\\s)[A-Z]\\d+(?=\\,|\\s|\\()"
-extract_pages <- "\\bP{0,1}\\.\\s*\\d+(-\\d+)?\\b"
+extract_year <- "//b(//d{4})//b"
+extract_journal <- "[A-Z][A-Za-z//s]+(?=//,//s//d)" 
+extract_volume <- "//b//d+//b(?=//,|//s)" 
+extract_issue <- "(?<=//,//s)(?:[A-Z])?//d+(?=//,|//s|//()|(?<=//,//s)[A-Z]//d+(?=//,|//s|//()"
+extract_pages <- "//bP{0,1}//.//s*//d+(-//d+)?//b"
 
 references_extract$references <- toupper(references_extract$references)
 
@@ -668,11 +671,11 @@ extraction <- function(ref) {
   pages <- str_extract(ref, extract_pages)
   
   # Extract volume and issue separately
-  volume_issue <- str_extract(ref, "\\b\\d{1,4}\\b(,\\s*\\d{1,4})?")
+  volume_issue <- str_extract(ref, "//b//d{1,4}//b(,//s*//d{1,4})?")
   
   # Split into volume and issue if both are present
   if (!is.na(volume_issue)) {
-    volume_issue_split <- str_split(volume_issue, ",\\s*")[[1]]
+    volume_issue_split <- str_split(volume_issue, ",//s*")[[1]]
     volume <- volume_issue_split[1]  # First part is the volume
     issue <- ifelse(length(volume_issue_split) > 1, volume_issue_split[2], NA)  # Second part is the issue, if it exists
   } else {
@@ -682,7 +685,7 @@ extraction <- function(ref) {
   
   # Clean up formats
   year <- str_trim(year)
-  pages <- ifelse(!is.na(pages), str_extract(pages, "\\d+(-\\d+)?"), NA)
+  pages <- ifelse(!is.na(pages), str_extract(pages, "//d+(-//d+)?"), NA)
   
   # Create a vector of extracted components
   extracted_parts <- c(authors, year, journal, volume, issue, pages)
@@ -690,10 +693,10 @@ extraction <- function(ref) {
   # Remove extracted parts and clean the remaining reference
   remaining_ref <- ref %>%
     str_remove_all(paste0(extracted_parts, collapse = "|")) %>%
-    str_remove_all(",\\s*") %>%
-    str_remove_all("\\s*\\(.*?\\)\\s*") %>%
-    str_remove_all("P\\.\\s*|PP\\.\\s*") %>%
-    str_remove_all("^\\s*|\\s*$") %>%
+    str_remove_all(",//s*") %>%
+    str_remove_all("//s*//(.*?//)//s*") %>%
+    str_remove_all("P//.//s*|PP//.//s*") %>%
+    str_remove_all("^//s*|//s*$") %>%
     str_trim()
   
   tibble(
@@ -721,7 +724,7 @@ results <- references_extract %>%
 fct_DT(results)
 
 results_split <- results %>%
-  separate_rows(unique_author, sep = ",\\s*")  # Split authors into multiple rows
+  separate_rows(unique_author, sep = ",//s*")  # Split authors into multiple rows
 
 # SAVE RESULTS ------------------------------------------------------------
 write_csv(results, paste0(dir_od, "cleaned_ref.csv"))
@@ -768,7 +771,7 @@ dt |> slate_theme_gt()
 
 ## Openalex
 
-If you are familiar with bibliometrics, then you might wonder why I have not talked about openalex. For those who do not know, openalex is an open-database that make it possible to access for free bibliometric data. However, for many reasons, we did not considered it for our inquiry. The first reason is that even if it is a promising database, there is still a lot of research about its robustness, especially when it comes to its metadata (some exceptions include @openalex
+If you are familiar with bibliometrics, then you might wonder why I have not talked about openalex. For those who do not know, openalex is an open-database that make it possible to access for free bibliometric data. However, for many reasons, we did not considered it for our inquiry. The first reason is that even if it is a promising database, there is still a lot of research about its robustness, especially when it comes to its metadata (some exceptions include 
 
 ## Data
 
@@ -847,7 +850,7 @@ ggplotly(fig + slate_theme_gg) |> slate_theme() |> layout(showlegend = FALSE)
 ```{r}
 #| renderings: [light, dark]
 
-dir_bio <- "C:/Users/jacob/OneDrive - Universit\u00e9 Laval/biophilo/Data/pybiblio/BIOLOGY/bioRxiv/"
+dir_bio <- "C:/Users/jacob/OneDrive - Université Laval/biophilo/Data/pybiblio/BIOLOGY/bioRxiv/"
 articles_and_references_bioRxiv <- read_csv(paste0(dir_bio, "articles_and_references_bioRxiv.csv"))
 
 
@@ -934,7 +937,7 @@ write_csv(cited_journals_bp, paste0(dir_od, "cited_journals_bp_2024-12-07.csv"))
 keyword_bp <- articles_special_philo_bio_reformat |> select(citing_id, citing_authors, citing_year, authkeywords)
 
 keyword_bp_cleaned <- keyword_bp |> 
-  separate_rows(authkeywords, sep = " \\| ") |> 
+  separate_rows(authkeywords, sep = " //| ") |> 
   filter(!is.na(authkeywords)) 
 
 keyword_bp_cleaned$authkeywords <- toupper(keyword_bp_cleaned$authkeywords)
@@ -964,22 +967,6 @@ htmlwidgets::saveWidget(widget = wc_bp,
 
 </iframe>
 
-```{r}
-
-
-
-wc_bp <- wordcloud2(keyword_bp_count, size = .7)
-wc_bp_dark <- wordcloud2(keyword_bp_count, backgroundColor = "#292a31", size = .7)
-
-wc_bp
-
-```
-
-```{r}
-wc_bp_dark
-
-```
-
 
 ### Citation delay
 
@@ -991,7 +978,7 @@ Here, we compute what we call citation delay. It is computed as the difference b
 #| renderings: [light, dark]
 # Citation delay ----------------------------------------------------------
 # for all
-dir_bio <- "C:/Users/jacob/OneDrive - Universit\u00e9 Laval/biophilo/Data/pybiblio/BIOLOGY/bioRxiv/"
+dir_bio <- "C:/Users/jacob/OneDrive - Université Laval/biophilo/Data/pybiblio/BIOLOGY/bioRxiv/"
 articles_bioRxiv_reformat <- read_csv(paste0(dir_bio,"articles_bioRxiv_reformat.csv"))
 
 delay_all_refs <- articles_articles_and_references_special_philo_bio |> mutate(delay = citing_year-cited_year)
@@ -1032,7 +1019,8 @@ ggplotly(p1 + slate_theme_gg) |> slate_theme()
 delay_bio_refs <- delay_all_refs |> filter(cited_journal %in% articles_bioRxiv_reformat$citing_journal) # 31, 760 
 delay_bio_refs <- delay_bio_refs |> mutate(citing_journal = case_when(
     citing_journal == "STUDIES IN HISTORY AND PHILOSOPHY OF SCIENCE PART C :STUDIES IN HISTORY AND PHILOSOPHY OF BIOLOGICAL AND BIOMEDICAL SCIENCES" ~ 
-      "STUDIES IN HISTORY AND PHILOSOPHY OF SCIENCE",
+      "STUDIES IN HPS",
+     citing_journal == "HISTORY AND PHILOSOPHY OF THE LIFE SCIENCES" ~ "HPLS",
     TRUE ~ citing_journal
   ))
 
@@ -1165,7 +1153,7 @@ philo_to_bio <- philo_refs_tagged |>
     ratio = to_bio / total*100,
     citing_journal = citing_journal
   ) %>%
-  mutate(direction = "Philosophy b Biology")
+  mutate(direction = "Philosophy -> Biology")
 
 bio_to_philo <- bio_refs_tagged %>%
   group_by(citing_year) %>%
@@ -1177,11 +1165,20 @@ bio_to_philo <- bio_refs_tagged %>%
     ratio = to_philo / total*100,
     citing_journal = citing_journal
   ) %>%
-  mutate(direction = "Biology b Philosophy")
+  mutate(direction = "Biology -> Philosophy")
+
+
+philo_to_bio <- philo_to_bio |> mutate(citing_journal = case_when(
+    citing_journal == "STUDIES IN HISTORY AND PHILOSOPHY OF SCIENCE PART C :STUDIES IN HISTORY AND PHILOSOPHY OF BIOLOGICAL AND BIOMEDICAL SCIENCES" ~ 
+      "STUDIES IN HPS",
+     citing_journal == "HISTORY AND PHILOSOPHY OF THE LIFE SCIENCES" ~ "HPLS",
+    TRUE ~ citing_journal
+  ))
+
 ```
 
-```{r CITATION RATIO, message = FALSE, warning = FALSE}
-#| renderings: [light, dark]
+```{r CITATION RATIO, message=FALSE, warning=FALSE}
+#| renderings: [light,dark]
 # Step 4: Plot
 fig <- ggplot(philo_to_bio |> filter(citing_year> 1986 & citing_year < 2025) |> select(citing_year, ratio, citing_journal) |> distinct(), aes(x = citing_year, y = ratio))+ #color = citing_journal)) +
   geom_line(linewidth = 2, color = "darkgrey") +
@@ -1284,7 +1281,7 @@ We used the BERTopic algorithm developped by Grootendorst (2022). I skip the tec
 
 We see that evolutionary related topics are predominant as Pradeu (2017) found. We also detect other important clusters such as cognitive sciences, Genetics and microbiology.
 
-![](C:/Users/jacob/OneDrive%20-%20UniversitC)%20Laval/biophilo/Visualisation/BERTopic_biology_and_philosophy.png)
+![](C:/Users/jacob/OneDrive/Bureau/computational_projects/Estrangement/Visualisation/CHP3/BERTopic_biology_and_philosophy.png)
 
 Here is a table with the count of articles per topic :
 
@@ -1319,7 +1316,7 @@ dt |> slate_theme_gt()
 
 Now, what happens when we look at all of philsophy of biology?
 
-![](C:/Users/jacob/OneDrive%20-%20UniversitC)%20Laval/biophilo/Visualisation/map_philo_bio_update.png)
+![](C:/Users/jacob/OneDrive/Bureau/computational_projects/Estrangement/Visualisation/CHP3/map_philo_bio_update.png)
 
 ### Meta-Topics
 
