@@ -29,10 +29,9 @@ keywords:
   - Topic modeling
   - BERTopic
 
-theme:
-  light: flatly
-  dark: darkly
-
+brand:
+  light: "C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/united-brand.yml"
+  dark: "C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/slate-brand.yml"
 
 license: "CC BY"
 copyright: 
@@ -43,52 +42,140 @@ funding: "The author received funding from the Social Sciences and Humanities Ca
 
 
 ```{r}
+#| echo: false
 #| warning: false
+
 # PACKAGES ----------------------------------------------------------------
-library(tidyverse)
-library(plotly)
-library(readxl)
+library(dplyr)
+library(refinr)
+library(DT)
+library(data.table)
+library(readr)
+library(ggplot2)
+require(patchwork)
 library(ggplot2)
 library(ggrepel)
-library(directlabels)
-library(highcharter)
+library(readxl)
+library(tidyverse)
 library(ggstream)
 library(viridis)
-library(patchwork)
-library(tibble)
+library(viridisLite)
+```
 
+<!--# Dark theme plotly settings -->
+```{r DARK THEME PLOTLY}
+#| echo: false
+#| warning: false
 
+library(plotly)
+
+plotly_brand <- function(brand_yml, title, x, y) {
+  brand <- yaml::yaml.load_file(brand_yml)
+  return (
+    function(plot)
+      plot |> layout(
+        paper_bgcolor = brand$color$background,
+        plot_bgcolor = brand$color$background,
+        title = list(font = list(
+          color = brand$color$foreground, size = 20
+        )),
+        # Plot title font
+        xaxis = list(
+          titlefont = list(color = brand$color$foreground, size = 16),
+          # x-axis title font
+          tickfont = list(color = brand$color$foreground, size = 14)      # x-axis tick font
+        ),
+        yaxis = list(
+          titlefont = list(color = brand$color$foreground, size = 16),
+          # y-axis title font
+          tickfont = list(color = brand$color$foreground, size = 14)      # y-axis tick font
+        )
+      )
+  )
+}
+      
+      
+
+united_theme <- plotly_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/united-brand.yml')
+slate_theme <- plotly_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/slate-brand.yml')
 
 ```
 
-# 
+<!--# Dark theme ggplot settings -->
+```{r DARK THEME ggplot2}
+#| warning: false
 
-# Une obsession philosophique? Le cas de la philosophie de la biologie"
+ggplot_theme_colors <- function(bgcolor, fgcolor) {
+  theme_minimal(base_size = 11) %+%
+    theme(
+      panel.border = element_blank(),
+      #panel.grid.major.y = element_line(colour = fgcolor),
+      panel.grid.minor.y = element_line(colour = fgcolor),
+      #panel.grid.major.x = element_line(colour = fgcolor),
+      panel.grid.minor.x = element_line(colour = fgcolor),
+      text = element_text(colour = fgcolor),
+      axis.text = element_text(colour = fgcolor),
+      rect = element_rect(colour = bgcolor, fill = bgcolor),
+      plot.background = element_rect(fill = bgcolor, colour = NA),
+      #axis.line = element_line(colour = fgcolor),
+      axis.ticks = element_line(colour = fgcolor), 
+      strip.text = element_text(colour = fgcolor)
+    )
+}
 
-## 1. Des idées recues mises en cause
+ggplot_theme_brand <- function(brand_yml) {
+  brand <- yaml::yaml.load_file(brand_yml)
+  ggplot_theme_colors(brand$color$background, brand$color$foreground)
+}
 
-NA
-
-## 2. Gayon à l'intersection des traditions
-
-Évolution temporelle des types d'articles publiés dans Biology and Philosophy
-
-::: {#fig-caption-crossref}
-```{r}
-#| renderings: [light, dark]
-#par(bg = "#FFFFFF", fg = "#000000")
-#plot(1:10) # Shown in `light` mode
-
-plot(1:10) # Shown in `dark` mode
-
-
+united_theme_gg<- ggplot_theme_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/united-brand.yml')
+slate_theme_gg <- ggplot_theme_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/slate-brand.yml')
 ```
-:::
 
+<!--# Tables setting -->
+```{r DARK THEME gt}
+
+#| echo: false
+#| warning: false
+
+gt_theme_colors <- function(bg, fg)
+  (function(table)
+    table |>
+    tab_options(
+      table.background.color=bg,
+      table.font.color=fg,
+    )
+  )
+
+
+gt_theme_brand <- function(brand_yml) {
+  brand <- yaml::yaml.load_file(brand_yml)
+  gt_theme_colors(brand$color$background, brand$color$foreground)
+}
+united_theme_gt <- gt_theme_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/united-brand.yml')
+slate_theme_gt <- gt_theme_brand('C:/Users/jacob/OneDrive - Université Laval/quarto-light-dark-experiments/slate-brand.yml')
+
+interactivity  <- function(data) {
+  opt_interactive(data,
+  use_search = TRUE,
+  use_filters = FALSE,
+  use_resizers = TRUE,
+  use_highlight = TRUE,
+  use_compact_mode = FALSE,
+  use_text_wrapping = TRUE,
+  use_page_size_select = FALSE,
+  page_size_default = 10,
+  page_size_values = c(10, 25, 50, 100),
+  pagination_type = c("numbers", "jump", "simple"),
+  height = "auto"
+)
+}
+```
+
+## Gayon Results
+### Data
 ```{r}
 
-# DATA --------------------------------------------------------------------
-library(tibble)
 
 tbl_1 <- tribble(
   ~Year, ~Studies_Biological_Theories, ~Philosophical_Questions, ~Historical_Articles, ~Total_Papers,
@@ -110,7 +197,6 @@ tbl_1 <- tribble(
   2001, 13, 7, 6, 26,
   2002, 17, 6, 3, 26
 )
-print(tbl_1)
 
 long_tbl_1 <- tbl_1 %>% 
   pivot_longer(cols = -Year,  # Pivot all columns except 'Year'
@@ -140,8 +226,6 @@ tbl_2 <- tribble(
   2001, 3, 0, 0, 0, 0, 2,
   2002, 9, 0, 2, 0, 1, 4
 )
-print(tbl_2)
-
 
 tbl_2 <- tbl_2 |> rowwise() %>% 
   mutate(Total_Papers = sum(c_across(-Year), na.rm = TRUE)) %>% 
@@ -173,7 +257,11 @@ tbl_3 <- tribble(
   2001, 1, 0, 0, 2, 1, 3,
   2002, 0, 0, 0, 1, 2, 3
 )
-print(tbl_3)
+```
+
+
+```{r}
+#| renderings: [light,dark]
 
 tbl_3 <- tbl_3 |> rowwise() %>% 
   mutate(Total_Papers = sum(c_across(-Year), na.rm = TRUE)) %>% 
@@ -188,28 +276,6 @@ long_tbl_3 <- tbl_3 %>%
 
 label_plot1<- long_tbl_1 |> select(Category, Year, Count) |> filter(Category != "Total_Papers", Year == max(Year-1)) |> distinct()
 
-
-# VISUALIZATION -----------------------------------------------------------
-ggplot(long_tbl_1 |> filter(Category != "Total_Papers"), aes(x=Year, y = Count, group = Category, color = Category)) +
-  #geom_point()+
-  geom_smooth(se = FALSE, span = 1, aes(fill = Category), alpha = 0.2) +
-  theme(legend.position = "none")+
-  scale_x_discrete(expand=c(0, 1)) +
-  geom_dl(aes(label = "Category"), method = "first.points", cex = 0.8)
-
-  geom_label_repel(data = long_tbl_1 %>% filter(Year == max(Year)), aes(label=Category), show.legend = FALSE)
-
-  #facet_grid(~Category)
-
-
-label_plot2<- long_tbl_2 |> select(Category, Year, Count) |> filter(Category != "Total_Papers", Year == max(Year)) |> distinct()
-ggplot(long_tbl_2 |> filter(Category != "Total_Papers"), aes(x=Year, y = Count, group = Category, color = Category)) +
-  geom_smooth(se = FALSE, span = 1,  aes(fill = Category), linewidth = 1.5, alpha = 0.2)+ 
-  geom_point()+
-  geom_label_repel(data = label_plot2, aes(label=Category), show.legend = FALSE)
-  #facet_grid(~Category)
-
-
 p3 <- ggplot(long_tbl_3 |> filter(Category != "Total_Papers"), aes(x=Year, y = Count, group = Category, color = Category)) +
   #geom_point()+
   geom_smooth(se = FALSE, span = 1,  aes(fill = Category), alpha = 0.2) +
@@ -218,27 +284,39 @@ theme(legend.key.size = unit(1, 'cm'),
   legend.text = element_text(size=20))
 
   
-ggplot(long_tbl_3 |> filter(Category != "Total_Papers"), aes(x=Year, y = Count, group = Category, color = Category, fill = Category)) + 
+p <- ggplot(long_tbl_3 |> filter(Category != "Total_Papers"), aes(x=Year, y = Count, group = Category, color = Category, fill = Category)) + 
   geom_stream()
-  
+
+ggplotly(p + united_theme_gg) |> united_theme()
+ggplotly(p + slate_theme_gg) |> slate_theme()
+
+```
 
 
-x <- ggplot(long_tbl_1 |> filter(Category != "Total_Papers"), aes(x=Year, y = Count, group = Category, color = Category, fill = Category)) + 
+```{r}
+#| renderings: [light,dark]
+
+p <- ggplot(long_tbl_1 |> filter(Category != "Total_Papers"), aes(x=Year, y = Count, group = Category, color = Category, fill = Category)) + 
   geom_stream() +
   scale_fill_viridis(discrete = TRUE, option = "D", direction = -1) + 
   scale_color_viridis(discrete = TRUE, option = "D", direction = -1) + 
-  theme(legend.key.size = unit(2, 'cm'), 
-        legend.text = element_text(size=30),
-        axis.title.x =element_text(size=30),
-        axis.text.x = element_text(size = 20),
+  theme( 
         legend.position = "top",
         legend.title=element_blank(),
         axis.text.y = element_blank(),  # Remove y-axis ticks
         axis.ticks.y = element_blank(), # Remove y-axis tick marks
         axis.title.y = element_blank()  # Remove y-axis title
-        ) 
+        )
 
-y <- ggplot(long_tbl_2 |> filter(Category != "Total_Papers"), aes(x=Year, y = Count, group = Category, color = Category, fill = Category)) + 
+ggplotly(p + united_theme_gg) |> united_theme()
+ggplotly(p + slate_theme_gg) |> slate_theme()
+```
+
+
+```{r}
+#| renderings: [light,dark]
+
+p <- ggplot(long_tbl_2 |> filter(Category != "Total_Papers"), aes(x=Year, y = Count, group = Category, color = Category, fill = Category)) + 
   geom_stream()  +
   scale_fill_viridis(discrete = TRUE, option = "C") + 
   scale_color_viridis(discrete = TRUE, option = "C")+ 
@@ -251,9 +329,16 @@ y <- ggplot(long_tbl_2 |> filter(Category != "Total_Papers"), aes(x=Year, y = Co
               axis.text.y = element_blank(),  # Remove y-axis ticks
               axis.ticks.y = element_blank(), # Remove y-axis tick marks
               axis.title.y = element_blank()  # Remove y-axis title
-        ) 
+        )
+ggplotly(p + united_theme_gg) |> united_theme()
+ggplotly(p + slate_theme_gg) |> slate_theme()
+```
 
-z <- ggplot(long_tbl_3 |> filter(Category != "Total_Papers"), aes(x=Year, y = Count, group = Category, color = Category, fill = Category)) + 
+
+```{r}
+#| renderings: [light,dark]
+
+p <- ggplot(long_tbl_3 |> filter(Category != "Total_Papers"), aes(x=Year, y = Count, group = Category, color = Category, fill = Category)) + 
   geom_stream() + 
   scale_fill_viridis(discrete = TRUE, option = "F") + 
   scale_color_viridis(discrete = TRUE, option = "F")+ 
@@ -267,102 +352,16 @@ z <- ggplot(long_tbl_3 |> filter(Category != "Total_Papers"), aes(x=Year, y = Co
               axis.ticks.y = element_blank(), # Remove y-axis tick marks
               axis.title.y = element_blank()  # Remove y-axis title
         ) 
-  
+ggplotly(p + united_theme_gg) |> united_theme()
+ggplotly(p + slate_theme_gg) |> slate_theme()
 
 ```
 
+## Pradeu's Results (Philosophy of Biology)
 ```{r}
-
-x
-
-pl_for_jpeg<-x+
-   theme(axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks = element_blank(),
-        plot.margin = unit(c(0,0,0,0),'mm'),
-        panel.background = element_rect(fill = "transparent", color=NA),
-        panel.grid.major = element_blank(),
-        plot.background =  element_rect(fill = "transparent", color=NA),
-        
-   )
+#| renderings: [light,dark]
 
 
-p <- x + theme(rect = element_rect(fill = "transparent"))
-p
-    
-```
-
-```{r}
-#| label: caption-crossref
-#| renderings: [light, dark]
-#| 
-y + theme(rect = element_rect(fill = "transparent"))
-
-
-
-```
-
-```{r}
-y+z
-```
-
-```{r}
-
-# Custom plot 
-
-highlighted <- ggplot(long_tbl_1 |> filter(Category != "Total_Papers"), aes(x=Year, y = Count, group = Category, color = Category, fill = Category)) + 
-  geom_stream() + 
-  scale_fill_manual(values = c("gray", "gray", "#400059")) + 
-  scale_color_manual(values = c("darkgray", "darkgray", "#400059")) + 
-  theme(legend.key.size = unit(1, 'cm'), 
-        legend.text = element_text(size=15),
-        legend.position = "top",
-        legend.title=element_blank()) 
-
-
-highlighted + y
-
-```
-
-```{r}
-#| renderings: [light, dark]
-highlighted + z
-
-```
-
-```{r}
-
-# With Highcharter --------------------------------------------------------
-highchart() %>%
-  hc_chart(type = "streamgraph") %>%
-  hc_title(text = "Streamgraph ") %>%
-  hc_xAxis(categories = tbl_1$Year, crosshair = TRUE) %>%
-  hc_yAxis(visible = FALSE) %>%
-  hc_plotOptions(series = list(marker = list(enabled = FALSE))) |> 
-hc_add_series_list(
-  lapply(names(tbl_1)[-1], function(cat) {
-    list(
-      name = cat,
-      data = tbl_1[[cat]],
-      stack = "stream"
-    )
-  })
-)
-```
-
-```{r}
-# PACKAGES ----------------------------------------------------------------
-library(dplyr)
-library(refinr)
-library(DT)
-library(data.table)
-library(readr)
-library(ggplot2)
-require(patchwork)
-library(ggplot2)
-library(ggrepel)
-
-# BIOLOGY AND PHILOSOPHY --------------------------------------------------
 # Names of the disciplines
 disciplines_BP_2003_2015 <- tibble(
   discipline = c(
@@ -393,8 +392,6 @@ disciplines_BP_2003_2015 <- tibble(
   journal = "B&P"
 )
 
-
-
 disciplines_BP_1986_2002 <- tibble(
   discipline = c(
     "Evolution",
@@ -417,17 +414,30 @@ disciplines_BP_1986_2002 <- tibble(
 BP_tb <- rbind(disciplines_BP_1986_2002, disciplines_BP_2003_2015)
 
 
-
-
 # ggplot
-ggplot(data = BP_tb, mapping = aes(x=discipline, y = percentage, color = discipline, fill = discipline)) + 
+p1 <- ggplot(data = BP_tb, mapping = aes(x=discipline, y = percentage, color = discipline, fill = discipline)) + 
   geom_bar(stat = "identity") + 
   theme(
     legend.position="bottom", 
     legend.box = "horizontal",
     legend.title = element_blank(),
     axis.text.x=element_blank(), 
-    axis.ticks.x=element_blank())
+    axis.ticks.x=element_blank()
+    ) + 
+  labs(title = "Themes in Biology in Philosophy according to Pradeu", x = "Discipline", y = "Percentage")
+
+
+ggplotly(p1 + united_theme_gg) |> united_theme() |> 
+  layout(xaxis = list(showticklabels=F, ticks = ""))
+
+ggplotly(p1 + slate_theme_gg) |> slate_theme() |> 
+  layout(xaxis = list(showticklabels=F, ticks = ""))
+  
+```
+
+## Pradeu's Results (Biology)
+```{r}
+#| renderings: [light,dark]
 
 
 # PNAS --------------------------------------------------------------------
@@ -460,17 +470,11 @@ disciplines_PNAS <- tibble(
   percentage = c(0, 4, 2, 1, 12, 7, 10, 7, 5, 12, 9, 8, 3, 5, 3, 2, 2, 2, 1, 1, 3, 1)
   )
 
-# Associated percentages
-
-
 
 # Combine into a data frame (optional)
 PNAS_tb <- disciplines_PNAS |> mutate(journal = "PNAS")
 
-# Merged data.table
-merged_tb  <- rbind(PNAS_tb, BP_tb)
-
-p <- ggplot(data = PNAS_tb, mapping = aes(x=discipline, y = percentage, color = discipline, fill = discipline)) + 
+plot <- ggplot(data = PNAS_tb, mapping = aes(x=discipline, y = percentage, color = discipline, fill = discipline)) + 
   geom_bar(stat = "identity") + 
   theme(
   legend.position="bottom", 
@@ -478,41 +482,44 @@ p <- ggplot(data = PNAS_tb, mapping = aes(x=discipline, y = percentage, color = 
   legend.title = element_blank(),
   axis.text.x=element_blank(), 
   axis.ticks.x=element_blank(), 
-) + ylim(c(0,60))
+) + labs(title = "Themes in PNAS", x = "Discipline", y = "Percentage") + 
+  ylim(c(0,60))
+
+ggplotly(plot + united_theme_gg) |> united_theme() |> 
+  layout(showlegend = T, xaxis = list(showticklabels=F, ticks = ""), xaxis2 = list(showticklabels=F, ticks = ""))
+
+ggplotly(plot + slate_theme_gg) |> slate_theme() |> 
+  layout(xaxis = list(showticklabels=F, ticks = ""), xaxis2 = list(showticklabels=F, ticks = ""))
 
 
-p1 <- ggplot(data = BP_tb, mapping = aes(x=discipline, y = percentage, color = discipline, fill = discipline)) + 
-  geom_bar(stat = "identity") + 
-  theme(
-    legend.position="bottom", 
-    legend.box = "horizontal",
-    legend.title = element_blank(),
-    axis.text.x=element_blank(), 
-    axis.ticks.x=element_blank())
+```
 
-p2 <- ggplot(data = merged_tb, mapping = aes(x = discipline, y = percentage, fill = discipline)) + 
-    geom_bar(stat = "identity") + 
-    theme_gray() +  # Apply the default ggplot2 theme
-    theme(
-      panel.background = element_rect(fill = "gray90", color = NA),  # Force the gray background
-      panel.grid.major = element_line(color = "white"),  # Keep white gridlines
-      legend.position = "bottom", 
-      legend.box = "horizontal",
-      legend.title = element_blank(),
-      axis.text.x = element_blank(), 
-      axis.ticks.x = element_blank(), 
-      legend.text = element_text(size=20), 
-      axis.title.y = element_text(size=25),
-      axis.text.y = element_text(size = 20), 
-      strip.text.x = element_text(size = 30), 
-      axis.title.x = element_text(size = 25)
-    ) +
-    xlab("Discipline") +
-    ylab("Pourcentage") +
+## Compare Biology and Philosophy of biology
+```{r}
+#| renderings: [light,dark]
+
+# Merged data.table
+merged_tb  <- rbind(PNAS_tb, BP_tb)
+
+
+plot <- ggplot(data = merged_tb, mapping = aes(x = discipline, y = percentage, fill = discipline)) + 
+    geom_bar(stat = "identity") +
+    labs(x = "Discipline", y = "Pourcentage")+
     facet_grid(~journal)
-  
-  print(p2)
-  
+
+
+ggplotly(plot + united_theme_gg) |> united_theme() |> 
+  layout(showlegend = T, xaxis = list(showticklabels=F, ticks = ""), xaxis2 = list(showticklabels=F, ticks = ""))
+
+ggplotly(plot + slate_theme_gg) |> slate_theme() |> 
+  layout(xaxis = list(showticklabels=F, ticks = ""), xaxis2 = list(showticklabels=F, ticks = ""))
+
+```
+
+
+Malaterre Results
+```{r}
+#| renderings: [light,dark]
 
 
 # Malaterre et al. (2020) vs Pradeu (2017) --------------------------------
@@ -531,272 +538,20 @@ TM_dt <- data.table(
 )
 
 
-p3 <- ggplot(data = TM_dt, mapping = aes(x = Discipline, y = Percentage, fill = Discipline)) + 
+plot <- ggplot(data = TM_dt, mapping = aes(x = Discipline, y = Percentage, fill = Discipline)) + 
   geom_bar(stat = "identity") + 
-  theme(
-    legend.position = "bottom", 
-    legend.box = "horizontal",
-    legend.title = element_blank(),
-    axis.text.x = element_blank(), 
-    axis.ticks.x = element_blank()
-  ) + ylim(c(0,60))
+  ylim(c(0,60)) + 
+  labs(title = "Themes in philosophy of biology using LDA")
 
 
+ggplotly(plot + united_theme_gg) |> united_theme() |> layout(showlegend = F, xaxis = list(tickangle=45))
+ggplotly(plot + slate_theme_gg) |> slate_theme() |> layout(showlegend = F, xaxis = list(tickangle=45))
 
-# Create the data frame
-data <- data.frame(
-  Discipline = c("A-Evolution", "B-Individuality-Altruism", "C-Species-Ecology", 
-                 "D-Genetics-Development", "E-Network-entropy-information", 
-                 "F-Cognition-behavior", "G-Socio-normative issues", 
-                 "H-General philosophy of science", "I-Others"),
-  Percentage = c(18, 8, 9, 10, 6, 10, 9, 22, 8),
-  Evolution = c(rep(TRUE, 3), rep(FALSE, 6))
-)
-
-
-# Create the "whole corpus" plot
-whole_corpus_plot <- ggplot(data, aes(x = 1, y = -Percentage, fill = Discipline, alpha = Evolution)) +
-  geom_col(width = 0.1) +
-  coord_flip() +
-  theme_void()+
-  theme(legend.position = "none") +
-  scale_alpha_discrete(range = c(0.35, 0.95)) +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0))
-# Create the vertical bar plot
-vertical_plot <- ggplot(data, aes(x = Discipline, y = Percentage, fill = Discipline)) +
-  geom_col() +
-  theme_minimal() +
-  theme(
-    legend.position = "bottom", 
-    legend.box = "horizontal",
-    legend.title = element_blank(),
-    axis.text.x = element_blank(), 
-    axis.ticks.x = element_blank()
-  )
-
-  # Combine the plots using patchwork
-combined_plot <- (plot_spacer() + plot_layout(widths = c(38, 62))) / 
-  whole_corpus_plot /
-  vertical_plot + 
-  plot_layout(heights = c(1, 0.3, 3))
-
-# Display the combined plot
-print(combined_plot)
-
-
-
-# New plot 
-p3+p1
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# New idea : Jitter and labels. 
-full_merged_tb <- full_join(
-  disciplines_BP_2003_2015 %>% select(discipline, percentage) %>% rename(percentage_BP = percentage),
-  PNAS_tb %>% select(discipline, percentage) %>% rename(percentage_PNAS = percentage),
-  by = "discipline"
-) %>%
-  # Replace NA with 0
-  replace_na(list(percentage_BP = 0, percentage_PNAS = 0))
-
-# View the merged tibble
-ggplot(data = full_merged_tb, aes(x = percentage_BP, y = percentage_PNAS, color = discipline)) +
-  geom_label_repel(aes(label = discipline), 
-                   position = position_jitter(width = 1, height = 1, seed = 1),
-                  size = 4, 
-                  max.overlaps = 10, # Reduce label clutter
-                  box.padding = 0.5, 
-                  force = 10) +
-  geom_point(position = position_jitter(width = 1, height = 1, seed = 1)) + # Add jitter to avoid overlap
-  theme_minimal() + 
-  geom_abline(intercept = 0, slope = 1, size = 0.5)+
-  theme(legend.position = "none")
-
-
-
-full_merged_tb <- full_merged_tb |> mutate(ratio = percentage_BP/percentage_PNAS)
-
-ggplot(data = full_merged_tb, aes(x = percentage_BP, y = percentage_PNAS, color = discipline)) +
-  geom_label_repel(aes(label = discipline), 
-                   position = position_jitter(width = 1, height = 1, seed = 1),
-                   size = 5, 
-                   max.overlaps = 8, # Reduce label clutter
-                   box.padding = 0.5, 
-                   force = 20,) +
-  geom_point(size = 4,position = position_jitter(width = 1, height = 1, seed = 1)) + # Add jitter to avoid overlap
-  theme_minimal() + 
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "black") +
-  ggplot2::scale_x_sqrt()+
-  theme(legend.position = "none") 
 
 ```
 
-```{r}
-#| message: false
-#| warning: false
-
-library(readxl)
-library(gender)
-library(data.table)
-library(dplyr)
-library(ggplot2)
-library(devtools)
-library(remotes)
-library(ggplot2)
-library(plotly)
-library(purrr)
-library(tidyr)
-library(htmlwidgets)
-library(tidyverse)
-library(kableExtra)
-
-# LOADING DATA ------------------------------------------------------------
-dir <- "C:/Users/jacob/OneDrive - Université Laval/Mon ordinateur portable/RSTUDIO/Data/"
-pins_authors <- read_excel("C:/Users/jacob/OneDrive - Université Laval/Mon ordinateur portable/RSTUDIO/Data/PinS_Table.xlsx")
-
-#Plotly configuration. 
-Sys.setenv("plotly_username"="JacobHamelMottiez")
-Sys.setenv("plotly_api_key"="baYnSFH6jD2mKbP1P62l")
-
-# DATA MANIPULATION -------------------------------------------------------
-pins_authors <- pins_authors %>% separate_longer_delim(Authors, delim = ";")
-pins_authors_unique <- pins_authors |> arrange(Authors) |> unique() # N = 298
-
-# SAVING 
-#xlsx::write.xlsx(pins_authors_unique, "C:/Users/jacob/Dropbox/PC/Desktop/RSTUDIO/Data/PinS_Table_authors_unique.xlsx")
-
-# MOST PRODUCTIVE Discipline PINS -----------------------------------------
-PinS_Discipline_year <- read_excel(paste0(dir,"PinS_Discipline_year.xlsx"))
-PinS_Discipline_year <- data.table(PinS_Discipline_year)
-PinS_Discipline_year[, N := .N, by = Discipline]
-
-# All Years
-b <- ggplot(PinS_Discipline_year, aes(x = reorder(Discipline, N), color = Discipline, fill = Discipline)) + 
-  geom_histogram(stat = "count")
-bb <- hide_legend(ggplotly(b))
-bb
-# Plotly.
-# api_create(bb, filename = "r-pins-histogram")
-
-
-# Each Decades
-PinS_Discipline_year[, N_year := .N, by = .(Discipline, Year)] # This is for each year.
-time_window <- seq(1970, 2017, 10)
-
-
-# Function for time window
-for(i in 1:(length(time_window))){
-  if(time_window[i] == 2010){
-    PinS_Discipline_year[Year >= 2010, 
-                start_window := 2010]}
-  else{
-    PinS_Discipline_year[Year >= time_window[i] & Year < time_window[i+1], 
-                start_window := time_window[i]]
-  }
-}
-
-PinS_Discipline_year[, N_window := .N, by =.(Discipline, start_window)] # This is for each decade. 
-#unique(PinS_Discipline_year[, .(start_window,N_window), by = Discipline]) # The decades where there is 0 citation are missing.
-
-# Missing values. 
-# g <- ggplot(PinS_Discipline_year, aes(x = start_window, y = N_window, 
-#                                       color = Discipline, fill = Discipline, group = Discipline)) + 
-#   geom_point(size = 3) +
-#   geom_smooth(method = "loess")
-# ggplotly(g)
-
-
-start_window <- seq(1970, 2017, 10)
-PinS_Discipline_plus <- expand_grid(start_window, unique(PinS_Discipline_year$Discipline)) |> print(n=55)
-PinS_Discipline_plus <- PinS_Discipline_plus |> arrange(`unique(PinS_Discipline_year$Discipline)`)
-PinS_Discipline_plus <- rename(PinS_Discipline_plus, Discipline = `unique(PinS_Discipline_year$Discipline)`)
-PinS_Discipline_year$N_year <- NULL
-PinS_Discipline_year$Year <- NULL
-PinS_Discipline_plus <- left_join(PinS_Discipline_plus,PinS_Discipline_year, by = c("Discipline", "start_window")) |> unique()
-PinS_Discipline_plus <- PinS_Discipline_plus %>% replace(is.na(.), 0)
-STEM <- c("Computers", "Engineering", "Logic", "Mathematics", "Physics", "Earth and Atmospheric Science")
-health <- c("Biology", "Medicine", "Neuroscience", "Psychiatry")
-STEM_disc <- PinS_Discipline_plus |> filter(Discipline %in% STEM) |> mutate(is_STEM = TRUE)
-health_disc <- PinS_Discipline_plus |> filter(Discipline %in% health) |> mutate(is_STEM = FALSE)
-PinS_Discipline_plus <- rbind(STEM_disc, health_disc)
-PinS_Discipline_plus <- rename(PinS_Discipline_plus, Discipline = Discipline)
-
-## ALL Discipline GGPLOT ---------------------------------------------------
-A <- ggplot(PinS_Discipline_plus, aes(x = start_window, 
-                                      y = N_window, 
-                                      color = Discipline, 
-                                      fill = Discipline, 
-                                      group = Discipline)) + 
-  geom_point(size = 2) +
-  geom_smooth(linewidth = 1)
-
-ggplotly(A)
-
-
-## Health GGPLOT -----------------------------------------------------------
-health_disc <- PinS_Discipline_plus |> filter(Discipline %in% health)
-H <- ggplot(health_disc, aes(x = start_window, 
-                             y = N_window, 
-                             color = Discipline, 
-                             fill = Discipline, 
-                             group = Discipline)) + 
-  geom_point(size = 2) +
-  geom_smooth(linewidth = 1)
-
-ggplotly(H)
-
-
-## STEM GGPLOT -------------------------------------------------------------
-STEM_disc <- PinS_Discipline_plus |> filter(Discipline %in% STEM)
-S <- ggplot(STEM_disc, aes(x = start_window, 
-                             y = N_window, 
-                             color = Discipline, 
-                             fill = Discipline, 
-                             group = Discipline)) + 
-  geom_point(size = 2) +
-  geom_smooth(linewidth = 1)
-
-ggplotly(S)
+## How Does these themes evolves through time? 
+*to do* 
 
 
 
-## FACET HEALTH VS STEM ----------------------------------------------------
-A <- ggplot(PinS_Discipline_plus, aes(x = start_window, 
-                                      y = N_window,
-                                      color = Discipline)) + 
-  geom_point(size = 2) +
-  geom_smooth(linewidth = 1) +
-  #theme_bw()+
-  facet_wrap(facets = vars(is_STEM), labeller = labeller(is_STEM = c("FALSE" = "Health Disciplines", "TRUE" = "STEM Disciplines"))) +
-  labs( color = "Disciplines", x = "Decade", y = "N. of Citations")
-AA <- ggplotly(A)
-AA
-
-ggsave(file="PinS_pradeu.etal_2021.svg", plot=A, width=10, height=8)
-
-getwd()
-# For Plotly. 
-# api_create(A, filename = "r-docs-midwest-boxplots2")
-
-# WEIGHT TABLE ------------------------------------------------------------
-# TABLE PERCENT -----------------------------------------------------------
-PinS_percent_table <-  PinS_Discipline_year |> group_by(Discipline) |> count() 
-PinS_percent_table <- PinS_percent_table |> arrange(-n) 
-total <- sum(PinS_percent_table$n)
-PinS_percent_table <- PinS_percent_table |> mutate(percent = (n/total)*100) |> select(Discipline, percent)
-kable(PinS_percent_table)|> kable_minimal(c("hover"), full_width = F) 
-```
