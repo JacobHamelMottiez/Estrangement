@@ -2,6 +2,13 @@
 ## What is this repo about?
 This Github repo is to keep track of the computational work I did during my master thesis. In it, I looked at the estrangement between philosophy of biology and biology. Specifically, I used tools aminly topic modeling (see below) and citation analysis to assess the current relationship of the two endeavors. This relationship was considered under two aspects. The first one was thematic diversity, i.e. 'are philosopher interested in the biological thematics that interest biologists?'. The second one was citational, 'how are philosopher citing biology?', 'are they able to keep themselves up to date with the contemporary production in biology?'. I also looked at the visibility of both disciplines through time, that is what is the evolution of the citations going from one discipline to the other.
 
+## HTML 
+For those who want to look at the various html files where the principal results are, the simplest way is to click on the following link : 
+- [FULL](https://htmlpreview.github.io/?https://github.com/JacobHamelMottiez/Estrangement/blob/main/Notebooks/appendix_master)
+- [CHP1](https://htmlpreview.github.io/?https://github.com/JacobHamelMottiez/Estrangement/blob/main/Notebooks/chapters_appendix/CHP1_appendix.html)
+- [CHP2](https://htmlpreview.github.io/?https://github.com/JacobHamelMottiez/Estrangement/blob/main/Notebooks/chapters_appendix/CHP2_appendix.html)
+- [CHP3](https://htmlpreview.github.io/?https://github.com/JacobHamelMottiez/Estrangement/blob/main/Notebooks/chapters_appendix/CHP3_appendix.html)
+  
 ## Structure
 Here you will find : 
 - **Pipeline** : various files (mostly .R), that I used for data cleaning or to test ideas such as cocitation graphs, wordclouds or citation ratio through time.
@@ -16,3 +23,5 @@ However, it is noteworthy to mention that OpenAlex is becoming a very appealing 
 just be sure to adapt the column names according to OpenAlex typology since it is not the same as Scopus (e.g. respectively title vs sourcetitle).
 
 ![](Visualisation/CHP3/map_philo_bio_update.png)
+
+
