@@ -14,6 +14,9 @@ abstract:
 format: 
   html:
     code-fold: true
+    toc: true
+    toc-depth: 2
+
     
 keywords:
   - Philosophy of Biology
@@ -820,6 +823,8 @@ articles_and_references_philo <- articles_and_references_philo |>
       "STUDIES IN HISTORY AND PHILOSOPHY OF SCIENCE PART C",
     TRUE ~ citing_journal
   ))
+
+articles_and_references_philo |> summary()
 ```
 
 ```{r}
@@ -1135,6 +1140,16 @@ references_special_philo_bio_reformat <- read_csv(paste0(dir_data, "pybiblio/SPE
 # Step 1: Tag what is from philo and what is from bio
 
 journals_bio <- articles_bioRxiv_reformat |> distinct(citing_journal) # 4,361.
+journals_bio_not_top_general <- articles_bioRxiv_reformat |> 
+  distinct(citing_journal) |>
+  filter(
+    citing_journal != "Proceedings of the National Academy of Sciences of the United States of America" |
+    citing_journal != "Nature" |
+    citing_journal != "Science" |
+    citing_journal != "PLoS ONE" |
+    citing_journal != "Nature Communications"
+)
+
 journals_philo <- articles_special_philo_bio_reformat |> distinct(citing_journal) # 4.
 journals_philo <- journals_philo |> rbind("BIOL PHILOS")
 
@@ -1170,7 +1185,7 @@ bio_to_philo <- bio_refs_tagged %>%
 
 philo_to_bio <- philo_to_bio |> mutate(citing_journal = case_when(
     citing_journal == "STUDIES IN HISTORY AND PHILOSOPHY OF SCIENCE PART C :STUDIES IN HISTORY AND PHILOSOPHY OF BIOLOGICAL AND BIOMEDICAL SCIENCES" ~ 
-      "STUDIES IN HPS",
+      "STUDIES IN HPS : PART C",
      citing_journal == "HISTORY AND PHILOSOPHY OF THE LIFE SCIENCES" ~ "HPLS",
     TRUE ~ citing_journal
   ))
@@ -1179,24 +1194,28 @@ philo_to_bio <- philo_to_bio |> mutate(citing_journal = case_when(
 
 ```{r CITATION RATIO, message=FALSE, warning=FALSE}
 #| renderings: [light,dark]
-# Step 4: Plot
-fig <- ggplot(philo_to_bio |> filter(citing_year> 1986 & citing_year < 2025) |> select(citing_year, ratio, citing_journal) |> distinct(), aes(x = citing_year, y = ratio))+ #color = citing_journal)) +
-  geom_line(linewidth = 2, color = "darkgrey") +
-  geom_smooth(linewidth = 3) +
+
+fig <- ggplot(philo_to_bio |> filter(citing_year> 1986 & citing_year < 2025) |> select(citing_year, ratio, citing_journal) |> distinct(), aes(x = citing_year, y = ratio)) + #color = citing_journal)) +
+  geom_line(linewidth = 1, color = "darkgrey") +
+  geom_smooth(linewidth = 2) +
+  geom_smooth() + 
   labs(
-    title = "Citations Towards Biology in Philosophy of Biology Over Time",
+    #title = "Citations Towards Biology in Philosophy of Biology Over Time", # No title for master thesis. 
     x = "Citing Year",
     y = "Ratio of Refs. from Biology Over All Refs. in Philosophy of Biology"
   ) +
+   scale_y_continuous(limits = c(0, 25), breaks = seq(0, 25, 5)) +
 theme(
     legend.position = "none",
     plot.title = element_text(hjust = 0.5, size = 15, face = "bold"),  # Centered & bold
     axis.title.x = element_text(size = 10),
     axis.title.y = element_text(size = 10),
     axis.text.y = element_text(size = 10),
-    axis.text.x = element_text(size = 10)
+    axis.text.x = element_text(size = 10),
   )
 
+fig  
+  
 ggplotly(fig + united_theme_gg) |> united_theme()
 ggplotly(fig + slate_theme_gg) |> slate_theme()
   
@@ -1239,8 +1258,9 @@ ggplotly(fig + slate_theme_gg) |> slate_theme() |> layout(showlegend = FALSE)
 
 
 fig <- ggplot(bio_to_philo |> filter(citing_year > 2015 & citing_year < 2025) |> select(ratio, citing_year) |> distinct(), aes(x = citing_year, y = ratio)) +
-  geom_line(size = 3, color = "blue") +
-  geom_point() +
+  geom_line(size = 2, color = "#ed4a50") +
+  #geom_point() +
+  ylim(c(0, 0.0125))
   labs(
     title = "Citations Towards Philosophy of Biology in Biology Over Time",
     x = "Citing Year",
@@ -1417,7 +1437,7 @@ meta_topics <- tibble(
 p <- ggplot(meta_topics, aes(x = reorder(MetaTopic, Percent), y = Percent, color = MetaTopic, fill = MetaTopic)) + 
   geom_col() +
   coord_flip() + 
-  labs(title = "Meta-Topic in Philosophy of Biology (%)") + 
+  labs(title = "Meta-Topic in Philosophy of Biology (%)", x = "MetaTopics", y = "Percent") + 
   scale_y_continuous(labels = function(x) paste0(x, "%")) +
   theme(
     legend.position = "none",
@@ -1428,12 +1448,47 @@ p <- ggplot(meta_topics, aes(x = reorder(MetaTopic, Percent), y = Percent, color
     axis.text.x = element_text("none")
   )
 
+meta_topics
 
-
-
+p
 ggplotly(p + united_theme_gg) |> united_theme() |> layout(showlegend = FALSE)
 ggplotly(p + slate_theme_gg) |> slate_theme() |> layout(showlegend = FALSE)
 ```
+
+### Evolution of Meta-Topics
+```{r}
+meta_topic_evo <- read_csv("C:/Users/jacob/OneDrive/Bureau/computational_projects/Estrangement/Data/meta_topic_evolution.csv")
+
+
+meta_topic_evo$clean_year <- year(meta_topic_evo$Year)
+meta_topic_evo_filtered <- meta_topic_evo |> filter(Meta_Topic != "Unlabelled", 
+                                                    clean_year != 2025)
+
+meta_topic_evo_filtered <- meta_topic_evo_filtered |> group_by(clean_year) |>
+ mutate(Count_all = sum(Count),
+        ratio = Count/Count_all*100) |> ungroup()
+
+
+```
+
+```{r}
+order_df <- meta_topic_evo_filtered %>%
+  group_by(Meta_Topic) %>%
+  summarise(max_ratio = max(ratio, na.rm = TRUE)) %>%
+  arrange(desc(max_ratio))
+
+meta_topic_evo_filtered$Meta_Topic <- factor(
+  meta_topic_evo_filtered$Meta_Topic,
+  levels = order_df$Meta_Topic
+)
+
+ggplot(meta_topic_evo_filtered, aes(x = clean_year, y = ratio, color = Meta_Topic)) +
+  #geom_line() +
+  geom_smooth(alpha = 0.3, se = FALSE) +
+  labs(color = "Meta-Topics", x = "Year", y = "Ratio")
+
+```
+
 
 ### Interactive Map
 
